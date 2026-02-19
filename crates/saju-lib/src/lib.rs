@@ -4,6 +4,8 @@ pub mod i18n;
 pub mod location;
 pub mod luck;
 pub mod lunar;
+pub mod service;
+pub mod timezone;
 pub mod types;
 
 pub use types::{

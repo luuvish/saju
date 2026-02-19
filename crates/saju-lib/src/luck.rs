@@ -1,14 +1,16 @@
+use serde::Serialize;
+
 use crate::astro::compute_solar_terms;
 use crate::bazi::{month_branch_from_term_key, month_stem_from_year, year_pillar};
 use crate::types::{Direction, Gender, Pillar, SolarTerm};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct DaewonItem {
     pub start_months: i32,
     pub pillar: Pillar,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct YearLuck {
     pub year: i32,
     pub start_jd: f64,
@@ -16,7 +18,7 @@ pub struct YearLuck {
     pub pillar: Pillar,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct MonthLuck {
     pub start_jd: f64,
     pub end_jd: f64,
@@ -24,7 +26,7 @@ pub struct MonthLuck {
     pub branch: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct MonthlyLuck {
     pub year: i32,
     pub year_pillar: Pillar,

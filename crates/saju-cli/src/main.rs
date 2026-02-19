@@ -1,23 +1,28 @@
 use clap::{Parser, ValueEnum};
-use chrono::{
-    DateTime, Datelike, Duration, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, Offset,
-    TimeZone, Timelike, Utc,
-};
-use chrono_tz::Tz;
-use std::str::FromStr;
+use chrono::NaiveDate;
 
-use saju::astro;
-use saju::bazi;
-use saju::i18n::{I18n, Lang, PillarKind};
-use saju::location;
-use saju::luck;
-use saju::lunar;
-use saju::types::{Gender, LmtInfo, LunarDate, Pillar};
+use saju_lib::astro;
+use saju_lib::bazi;
+use saju_lib::i18n::{I18n, Lang, PillarKind};
+use saju_lib::luck;
+use saju_lib::service::{CalendarType, SajuRequest, SajuResult};
+use saju_lib::timezone::TimeZoneSpec;
+use saju_lib::types::{Gender, Pillar, SolarTerm};
+use saju_lib::{Direction, Element, StrengthClass};
 
 #[derive(Clone, Copy, Debug, ValueEnum, PartialEq, Eq)]
-enum CalendarType {
+enum CalendarArg {
     Solar,
     Lunar,
+}
+
+impl From<CalendarArg> for CalendarType {
+    fn from(value: CalendarArg) -> Self {
+        match value {
+            CalendarArg::Solar => CalendarType::Solar,
+            CalendarArg::Lunar => CalendarType::Lunar,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -47,7 +52,7 @@ struct Args {
     #[arg(long)]
     time: String,
     #[arg(long, default_value = "solar", value_enum)]
-    calendar: CalendarType,
+    calendar: CalendarArg,
     #[arg(long, action = clap::ArgAction::SetTrue)]
     leap_month: bool,
     #[arg(long, default_value = "Asia/Seoul")]
@@ -87,184 +92,99 @@ fn run() -> Result<(), String> {
 
     let input_date = NaiveDate::parse_from_str(&args.date, "%Y-%m-%d")
         .map_err(|_| "date format must be YYYY-MM-DD".to_string())?;
-    let time = parse_time(&args.time)?;
-    if args.calendar == CalendarType::Solar && args.leap_month {
-        return Err("leap-month is only valid with calendar=lunar".to_string());
-    }
-
-    let mut converted_solar = None;
-    let mut converted_lunar = None;
-    let solar_date = match args.calendar {
-        CalendarType::Solar => {
-            converted_lunar = Some(lunar::solar_to_lunar(input_date)?);
-            input_date
-        }
-        CalendarType::Lunar => {
-            let solar = lunar::lunar_to_solar(
-                input_date.year(),
-                input_date.month(),
-                input_date.day(),
-                args.leap_month,
-            )?;
-            converted_solar = Some(solar);
-            solar
-        }
-    };
-    let naive = NaiveDateTime::new(solar_date, time);
-
-    let tz_spec = parse_timezone(&args.tz)?;
-    let input_local_dt = tz_spec.localize(naive)?;
-    let use_lmt = args.local_mean_time || args.longitude.is_some() || args.location.is_some();
-    let (local_dt, lmt_info) = if use_lmt {
-        if args.longitude.is_some() && args.location.is_some() {
-            return Err("use either --longitude or --location (not both)".to_string());
-        }
-        let (longitude, location_label) = if let Some(longitude) = args.longitude {
-            (longitude, None)
-        } else if let Some(location) = args.location.as_deref() {
-            let loc = location::resolve_location(location).ok_or_else(|| {
-                format!(
-                    "unknown location '{}'; try one of: {}",
-                    location,
-                    location::location_hint()
-                )
-            })?;
-            (loc.longitude, Some(loc.display.to_string()))
-        } else {
-            return Err("longitude or location is required for local mean time".to_string());
-        };
-        if !(-180.0..=180.0).contains(&longitude) {
-            return Err("longitude must be between -180 and 180 degrees".to_string());
-        }
-        let (std_meridian, correction_seconds) =
-            location::lmt_correction(longitude, input_local_dt.offset().local_minus_utc());
-        let corrected_local = input_local_dt + Duration::seconds(correction_seconds);
-        let info = LmtInfo {
-            longitude,
-            std_meridian,
-            correction_seconds,
-            corrected_local,
-            location_label,
-        };
-        (corrected_local, Some(info))
-    } else {
-        (input_local_dt, None)
-    };
-
-    let utc_dt = local_dt.with_timezone(&Utc);
-    let birth_jd = astro::jd_from_datetime(utc_dt);
 
     let gender = parse_gender(&args.gender)?;
+    let use_lmt = args.local_mean_time || args.longitude.is_some() || args.location.is_some();
 
-    let year = local_dt.year();
-    let terms_prev = astro::compute_solar_terms(year - 1);
-    let terms_curr = astro::compute_solar_terms(year);
-    let terms_next = astro::compute_solar_terms(year + 1);
-
-    let lichun_jd = terms_curr
-        .iter()
-        .find(|t| t.def.key == "lichun")
-        .ok_or("failed to find lichun term")?
-        .jd;
-    let year_for_pillar = if birth_jd >= lichun_jd { year } else { year - 1 };
-    let (year_stem, year_branch) = bazi::year_pillar(year_for_pillar);
-    let year_pillar = Pillar {
-        stem: year_stem,
-        branch: year_branch,
-    };
-
-    let month_branch = bazi::month_branch_for_birth(birth_jd, &terms_prev, &terms_curr)?;
-    let month_stem = bazi::month_stem_from_year(year_stem, month_branch);
-    let month_pillar = Pillar {
-        stem: month_stem,
-        branch: month_branch,
-    };
-
-    let local_naive = local_dt.naive_local();
-    let adjusted_naive = if local_naive.time().hour() >= 23 {
-        local_naive + Duration::days(1)
-    } else {
-        local_naive
-    };
-    let date_for_day = adjusted_naive.date();
-    let jdn = bazi::jdn_from_date(
-        date_for_day.year(),
-        date_for_day.month(),
-        date_for_day.day(),
-    );
-    let (day_stem, day_branch) = bazi::day_pillar_from_jdn(jdn);
-    let day_pillar = Pillar {
-        stem: day_stem,
-        branch: day_branch,
-    };
-
-    let hour_branch = bazi::hour_branch_index(local_naive.time().hour(), local_naive.time().minute());
-    let hour_stem = bazi::hour_stem_from_day(day_stem, hour_branch);
-    let hour_pillar = Pillar {
-        stem: hour_stem,
-        branch: hour_branch,
-    };
-
-    let direction = luck::daewon_direction(gender, year_stem);
-    let start_months = luck::daewon_start_months(
-        birth_jd,
-        &terms_prev,
-        &terms_curr,
-        &terms_next,
-        direction,
-    )
-    .ok_or("failed to find solar term for daewon start")?;
-    let daewon_pillars = luck::build_daewon_pillars(month_pillar, direction, args.daewon_count);
-    let daewon_items = luck::build_daewon_items(start_months, &daewon_pillars);
-
-    let month_year = args
-        .month_year
-        .unwrap_or_else(|| tz_spec.to_local(Utc::now()).year());
-    let year_start = args.year_start.unwrap_or(month_year);
-    if args.year_count == 0 {
-        return Err("year-count must be at least 1".to_string());
-    }
-
-    let yearly_luck = luck::yearly_luck(year_start, args.year_count)?;
-    let monthly_luck = luck::monthly_luck(month_year)?;
-    let strength = bazi::assess_strength(day_stem, [year_pillar, month_pillar, day_pillar, hour_pillar]);
-
-    print_header(
-        &args,
+    let req = SajuRequest {
+        date: input_date,
+        time: args.time.clone(),
+        calendar: args.calendar.into(),
+        leap_month: args.leap_month,
         gender,
-        &tz_spec,
-        args.calendar,
-        converted_solar,
-        converted_lunar,
-        lmt_info,
+        tz: args.tz.clone(),
+        use_lmt,
+        longitude: args.longitude,
+        location: args.location.clone(),
+        daewon_count: args.daewon_count,
+        month_year: args.month_year,
+        year_start: args.year_start,
+        year_count: args.year_count,
+    };
+
+    let result = saju_lib::service::calculate(&req)?;
+
+    print_header(&result, &i18n);
+    print_pillars(
+        result.year_pillar,
+        result.month_pillar,
+        result.day_pillar,
+        result.hour_pillar,
         &i18n,
     );
-    print_pillars(year_pillar, month_pillar, day_pillar, hour_pillar, &i18n);
-    print_hidden_stems(year_pillar, month_pillar, day_pillar, hour_pillar, &i18n);
-    print_ten_gods(year_pillar, month_pillar, day_pillar, hour_pillar, &i18n);
-    print_twelve_stages(day_stem, year_pillar, month_pillar, day_pillar, hour_pillar, &i18n);
-    print_twelve_shinsal(year_branch, year_pillar, month_pillar, day_pillar, hour_pillar, &i18n);
-    print_strength(strength, &i18n);
-    print_elements(year_pillar, month_pillar, day_pillar, hour_pillar, &i18n);
-    print_daewon(direction, start_months, &daewon_items, day_stem, &i18n);
-    print_yearly_luck(&yearly_luck, day_stem, &tz_spec, &i18n);
-    print_monthly_luck(&monthly_luck, day_stem, &tz_spec, &i18n);
+    print_hidden_stems(
+        result.year_pillar,
+        result.month_pillar,
+        result.day_pillar,
+        result.hour_pillar,
+        &i18n,
+    );
+    print_ten_gods(
+        result.year_pillar,
+        result.month_pillar,
+        result.day_pillar,
+        result.hour_pillar,
+        &i18n,
+    );
+    print_twelve_stages(
+        result.day_pillar.stem,
+        result.year_pillar,
+        result.month_pillar,
+        result.day_pillar,
+        result.hour_pillar,
+        &i18n,
+    );
+    print_twelve_shinsal(
+        result.year_pillar.branch,
+        result.year_pillar,
+        result.month_pillar,
+        result.day_pillar,
+        result.hour_pillar,
+        &i18n,
+    );
+    print_strength(result.strength, &i18n);
+    print_elements(
+        result.year_pillar,
+        result.month_pillar,
+        result.day_pillar,
+        result.hour_pillar,
+        &i18n,
+    );
+    print_daewon(
+        result.daewon_direction,
+        result.daewon_start_months,
+        &result.daewon_items,
+        result.day_pillar.stem,
+        &i18n,
+    );
+    print_yearly_luck(
+        &result.yearly_luck,
+        result.day_pillar.stem,
+        &result.tz_spec,
+        &i18n,
+    );
+    print_monthly_luck(
+        &result.monthly_luck,
+        result.day_pillar.stem,
+        &result.tz_spec,
+        &i18n,
+    );
 
     if args.show_terms {
-        print_terms(&tz_spec, &terms_curr, &i18n);
+        print_terms(&result.tz_spec, &result.solar_terms, &i18n);
     }
 
     Ok(())
-}
-
-fn parse_time(input: &str) -> Result<NaiveTime, String> {
-    if let Ok(time) = NaiveTime::parse_from_str(input, "%H:%M:%S") {
-        return Ok(time);
-    }
-    if let Ok(time) = NaiveTime::parse_from_str(input, "%H:%M") {
-        return Ok(time);
-    }
-    Err("time format must be HH:MM or HH:MM:SS".to_string())
 }
 
 fn parse_gender(input: &str) -> Result<Gender, String> {
@@ -273,81 +193,6 @@ fn parse_gender(input: &str) -> Result<Gender, String> {
         "female" | "f" | "여" => Ok(Gender::Female),
         _ => Err("gender must be male|female|m|f|남|여".to_string()),
     }
-}
-
-enum TimeZoneSpec {
-    Fixed(FixedOffset),
-    Named(Tz),
-}
-
-impl TimeZoneSpec {
-    fn localize(&self, naive: NaiveDateTime) -> Result<DateTime<FixedOffset>, String> {
-        use chrono::offset::LocalResult;
-        match self {
-            TimeZoneSpec::Fixed(offset) => offset
-                .from_local_datetime(&naive)
-                .single()
-                .ok_or_else(|| "invalid local time for fixed offset".to_string()),
-            TimeZoneSpec::Named(tz) => match tz.from_local_datetime(&naive) {
-                LocalResult::Single(dt) => Ok(dt.with_timezone(&dt.offset().fix())),
-                LocalResult::Ambiguous(dt1, _) => Ok(dt1.with_timezone(&dt1.offset().fix())),
-                LocalResult::None => Err("local time does not exist in this timezone".to_string()),
-            },
-        }
-    }
-
-    fn to_local(&self, utc: DateTime<Utc>) -> DateTime<FixedOffset> {
-        match self {
-            TimeZoneSpec::Fixed(offset) => utc.with_timezone(offset),
-            TimeZoneSpec::Named(tz) => {
-                let dt = tz.from_utc_datetime(&utc.naive_utc());
-                dt.with_timezone(&dt.offset().fix())
-            }
-        }
-    }
-
-    fn name(&self) -> String {
-        match self {
-            TimeZoneSpec::Fixed(offset) => format!("{}", offset),
-            TimeZoneSpec::Named(tz) => tz.name().to_string(),
-        }
-    }
-}
-
-fn parse_timezone(input: &str) -> Result<TimeZoneSpec, String> {
-    if let Some(offset) = parse_fixed_offset(input) {
-        return Ok(TimeZoneSpec::Fixed(offset));
-    }
-    if let Ok(tz) = Tz::from_str(input) {
-        return Ok(TimeZoneSpec::Named(tz));
-    }
-    Err("timezone must be IANA name (e.g., Asia/Seoul) or offset (+09:00)".to_string())
-}
-
-fn parse_fixed_offset(input: &str) -> Option<FixedOffset> {
-    let trimmed = input.trim();
-    let sign = if trimmed.starts_with('+') {
-        1
-    } else if trimmed.starts_with('-') {
-        -1
-    } else {
-        return None;
-    };
-    let rest = &trimmed[1..];
-    let (hours, minutes) = if let Some((h, m)) = rest.split_once(':') {
-        (h, m)
-    } else if rest.len() == 4 {
-        (&rest[0..2], &rest[2..4])
-    } else {
-        return None;
-    };
-    let hours: i32 = hours.parse().ok()?;
-    let minutes: i32 = minutes.parse().ok()?;
-    if hours.abs() > 23 || minutes.abs() > 59 {
-        return None;
-    }
-    let total = sign * (hours * 3600 + minutes * 60);
-    FixedOffset::east_opt(total)
 }
 
 fn format_correction(seconds: i64) -> String {
@@ -380,37 +225,31 @@ fn format_hidden_stems_with_tengod(i18n: &I18n, day_stem: usize, branch: usize) 
         .join(", ")
 }
 
-fn print_header(
-    args: &Args,
-    gender: Gender,
-    tz_spec: &TimeZoneSpec,
-    calendar: CalendarType,
-    converted_solar: Option<NaiveDate>,
-    converted_lunar: Option<LunarDate>,
-    lmt_info: Option<LmtInfo>,
-    i18n: &I18n,
-) {
-    let is_lunar = matches!(calendar, CalendarType::Lunar);
+fn print_header(result: &SajuResult, i18n: &I18n) {
     println!("{}", i18n.title());
     println!(
         "- {}({}): {} {} {}",
         i18n.input_label(),
-        i18n.calendar_label(is_lunar, args.leap_month),
-        args.date,
-        args.time,
-        tz_spec.name()
+        i18n.calendar_label(result.calendar_is_lunar, result.leap_month),
+        result.input_date,
+        result.input_time,
+        result.tz_name
     );
-    if let Some(date) = converted_solar {
+    if let Some(date) = result.converted_solar {
         println!(
             "- {}: {} {} {}",
             i18n.converted_solar_label(),
             date.format("%Y-%m-%d"),
-            args.time,
-            tz_spec.name()
+            result.input_time,
+            result.tz_name
         );
     }
-    if let Some(lunar) = converted_lunar {
-        let leap_suffix = if lunar.is_leap { i18n.leap_suffix() } else { "" };
+    if let Some(ref lunar) = result.converted_lunar {
+        let leap_suffix = if lunar.is_leap {
+            i18n.leap_suffix()
+        } else {
+            ""
+        };
         println!(
             "- {}: {:04}-{:02}-{:02}{}",
             i18n.converted_lunar_label(),
@@ -420,7 +259,7 @@ fn print_header(
             leap_suffix
         );
     }
-    if let Some(info) = lmt_info {
+    if let Some(ref info) = result.lmt_info {
         if let Some(label) = info.location_label.as_deref() {
             println!(
                 "- {}: {} {} | {} {:.4}deg | {} {:.1}deg | {} {}",
@@ -450,10 +289,14 @@ fn print_header(
             "- {}: {} {}",
             i18n.corrected_time_label(),
             info.corrected_local.format("%Y-%m-%d %H:%M:%S"),
-            tz_spec.name()
+            result.tz_name
         );
     }
-    println!("- {}: {}", i18n.gender_label(), i18n.gender_value(gender));
+    println!(
+        "- {}: {}",
+        i18n.gender_label(),
+        i18n.gender_value(result.gender)
+    );
     println!("- {}: 23:00", i18n.day_boundary_label());
     println!();
 }
@@ -629,9 +472,9 @@ fn print_twelve_shinsal(
 
 fn print_strength(strength: bazi::StrengthResult, i18n: &I18n) {
     let stage_bonus = match strength.stage_class {
-        saju::StrengthClass::Strong => 2,
-        saju::StrengthClass::Weak => -2,
-        saju::StrengthClass::Neutral => 0,
+        StrengthClass::Strong => 2,
+        StrengthClass::Weak => -2,
+        StrengthClass::Neutral => 0,
     };
     let support_total = (strength.support_stems as i32) * 2 + strength.support_hidden as i32;
     let drain_total = (strength.drain_stems as i32) * 2 + strength.drain_hidden as i32;
@@ -685,22 +528,22 @@ fn print_elements(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: 
     println!("{}", i18n.elements_heading());
     println!(
         "- {} {} / {} {} / {} {} / {} {} / {} {}",
-        i18n.element_short_label(saju::Element::Wood),
+        i18n.element_short_label(Element::Wood),
         counts[0],
-        i18n.element_short_label(saju::Element::Fire),
+        i18n.element_short_label(Element::Fire),
         counts[1],
-        i18n.element_short_label(saju::Element::Earth),
+        i18n.element_short_label(Element::Earth),
         counts[2],
-        i18n.element_short_label(saju::Element::Metal),
+        i18n.element_short_label(Element::Metal),
         counts[3],
-        i18n.element_short_label(saju::Element::Water),
+        i18n.element_short_label(Element::Water),
         counts[4]
     );
     println!();
 }
 
 fn print_daewon(
-    direction: saju::Direction,
+    direction: Direction,
     start_months: i32,
     items: &[luck::DaewonItem],
     day_stem: usize,
@@ -790,8 +633,13 @@ fn print_monthly_luck(
     println!();
 }
 
-fn print_terms(tz_spec: &TimeZoneSpec, terms: &[saju::SolarTerm], i18n: &I18n) {
-    println!("{} ({} {})", i18n.terms_heading(), tz_spec.name(), i18n.tz_label());
+fn print_terms(tz_spec: &TimeZoneSpec, terms: &[SolarTerm], i18n: &I18n) {
+    println!(
+        "{} ({} {})",
+        i18n.terms_heading(),
+        tz_spec.name(),
+        i18n.tz_label()
+    );
     for term in terms {
         let utc = astro::datetime_from_jd(term.jd);
         let local = tz_spec.to_local(utc);

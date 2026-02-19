@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 struct LocationDef {
     key: &'static str,
     display: &'static str,
@@ -103,6 +105,13 @@ pub struct LocationMatch {
     pub longitude: f64,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct LocationInfo {
+    pub key: &'static str,
+    pub display: &'static str,
+    pub longitude: f64,
+}
+
 pub fn resolve_location(input: &str) -> Option<LocationMatch> {
     let norm = normalize_location(input);
     for loc in LOCATIONS.iter() {
@@ -138,6 +147,17 @@ pub fn location_hint() -> String {
         .map(|loc| loc.key)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+pub fn location_list() -> Vec<LocationInfo> {
+    LOCATIONS
+        .iter()
+        .map(|loc| LocationInfo {
+            key: loc.key,
+            display: loc.display,
+            longitude: loc.longitude,
+        })
+        .collect()
 }
 
 pub fn lmt_correction(longitude: f64, offset_seconds: i32) -> (f64, i64) {

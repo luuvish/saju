@@ -1,24 +1,25 @@
 use chrono::{DateTime, FixedOffset};
+use serde::Serialize;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct Pillar {
     pub stem: usize,
     pub branch: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum Gender {
     Male,
     Female,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum Direction {
     Forward,
     Backward,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub enum Element {
     Wood,
     Fire,
@@ -27,7 +28,7 @@ pub enum Element {
     Water,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum Relation {
     Same,
     Output,
@@ -36,7 +37,7 @@ pub enum Relation {
     Resource,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum TenGod {
     BiGyeon,
     GeopJae,
@@ -50,21 +51,21 @@ pub enum TenGod {
     JeongIn,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum StrengthClass {
     Strong,
     Weak,
     Neutral,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub enum StrengthVerdict {
     Strong,
     Weak,
     Neutral,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct TermDef {
     pub key: &'static str,
     pub name_ko: &'static str,
@@ -73,13 +74,13 @@ pub struct TermDef {
     pub angle: f64,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct SolarTerm {
     pub def: &'static TermDef,
     pub jd: f64,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct LunarDate {
     pub year: i32,
     pub month: u32,
@@ -87,7 +88,7 @@ pub struct LunarDate {
     pub is_leap: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct LmtInfo {
     pub longitude: f64,
     pub std_meridian: f64,

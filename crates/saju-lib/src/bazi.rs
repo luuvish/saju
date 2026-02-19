@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 use crate::types::{
     Element, Pillar, Relation, SolarTerm, StrengthClass, StrengthVerdict, TenGod,
 };
@@ -19,7 +21,7 @@ const HIDDEN_STEMS: [&[usize]; 12] = [
 
 const CHANGSHENG_START: [usize; 10] = [11, 6, 2, 9, 2, 9, 5, 0, 8, 3];
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
 pub struct StrengthResult {
     pub stage_index: usize,
     pub stage_class: StrengthClass,
