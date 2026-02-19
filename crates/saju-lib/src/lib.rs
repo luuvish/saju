@@ -9,6 +9,7 @@ pub mod timezone;
 pub mod types;
 
 pub use types::{
-    Direction, Element, Gender, LmtInfo, LunarDate, Pillar, Relation, SolarTerm, StrengthClass,
-    StrengthVerdict, TenGod, TermDef,
+    BranchInteraction, BranchRelationType, Direction, Element, Gender, LmtInfo, LunarDate, Pillar,
+    PillarPosition, Relation, ShinsalEntry, ShinsalKind, SolarTerm, StemInteraction,
+    StemRelationType, StrengthClass, StrengthVerdict, TenGod, TermDef,
 };

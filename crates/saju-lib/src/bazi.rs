@@ -1,7 +1,9 @@
 use serde::Serialize;
 
 use crate::types::{
-    Element, Pillar, Relation, SolarTerm, StrengthClass, StrengthVerdict, TenGod,
+    BranchInteraction, BranchRelationType, Element, Pillar, PillarPosition, Relation, ShinsalEntry,
+    ShinsalKind, SolarTerm, StemInteraction, StemRelationType, StrengthClass, StrengthVerdict,
+    TenGod,
 };
 
 const HIDDEN_STEMS: [&[usize]; 12] = [
@@ -165,7 +167,7 @@ pub fn stem_polarity(stem: usize) -> bool {
 }
 
 pub fn branch_polarity(branch: usize) -> bool {
-    branch % 2 == 0
+    stem_polarity(main_hidden_stem(branch))
 }
 
 pub fn relation(day: Element, target: Element) -> Relation {
@@ -256,10 +258,10 @@ pub fn stage_strength_class(stage_index: usize) -> StrengthClass {
 
 pub fn shinsal_start_branch(year_branch: usize) -> usize {
     match year_branch {
-        0 | 4 | 8 => 2,  // 申子辰 -> 寅
-        2 | 6 | 10 => 8, // 寅午戌 -> 申
-        3 | 7 | 11 => 5, // 亥卯未 -> 巳
-        1 | 5 | 9 => 11, // 巳酉丑 -> 亥
+        0 | 4 | 8 => 8,  // 申子辰 -> 지살 at 申
+        2 | 6 | 10 => 2, // 寅午戌 -> 지살 at 寅
+        3 | 7 | 11 => 11, // 亥卯未 -> 지살 at 亥
+        1 | 5 | 9 => 5,  // 巳酉丑 -> 지살 at 巳
         _ => 0,
     }
 }
@@ -286,6 +288,671 @@ pub fn elements_count(pillars: [Pillar; 4]) -> [u8; 5] {
         counts[element_index(branch_element(pillar.branch))] += 1;
     }
     counts
+}
+
+// ── Stem interactions (천간 합/충) ──
+
+/// 천간합: returns the resulting element if the pair forms a hap
+pub fn stem_hap(a: usize, b: usize) -> Option<Element> {
+    let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+    match (lo, hi) {
+        (0, 5) => Some(Element::Earth), // 갑기합 → 토
+        (1, 6) => Some(Element::Metal), // 을경합 → 금
+        (2, 7) => Some(Element::Water), // 병신합 → 수
+        (3, 8) => Some(Element::Wood),  // 정임합 → 목
+        (4, 9) => Some(Element::Fire),  // 무계합 → 화
+        _ => None,
+    }
+}
+
+/// 천간충: returns true if the pair clashes
+pub fn stem_chung(a: usize, b: usize) -> bool {
+    let diff = (a as i32 - b as i32).unsigned_abs() as usize;
+    // 천간충 pairs differ by exactly 6 (양간만): 갑경, 을신, 병임, 정계
+    diff == 6 && a < 8 && b < 8
+}
+
+pub fn find_stem_interactions(pillars: [Pillar; 4]) -> Vec<StemInteraction> {
+    const POS: [PillarPosition; 4] = [
+        PillarPosition::Year,
+        PillarPosition::Month,
+        PillarPosition::Day,
+        PillarPosition::Hour,
+    ];
+    let mut result = Vec::new();
+    for i in 0..4 {
+        for j in (i + 1)..4 {
+            let a = pillars[i].stem;
+            let b = pillars[j].stem;
+            if let Some(el) = stem_hap(a, b) {
+                result.push(StemInteraction {
+                    relation: StemRelationType::Hap,
+                    positions: [POS[i], POS[j]],
+                    stems: [a, b],
+                    result_element: Some(el),
+                });
+            }
+            if stem_chung(a, b) {
+                result.push(StemInteraction {
+                    relation: StemRelationType::Chung,
+                    positions: [POS[i], POS[j]],
+                    stems: [a, b],
+                    result_element: None,
+                });
+            }
+        }
+    }
+    result
+}
+
+// ── Branch interactions (지지 관계) ──
+
+/// 육합
+fn branch_yuk_hap(a: usize, b: usize) -> Option<Element> {
+    let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+    match (lo, hi) {
+        (0, 1) => Some(Element::Earth),  // 자축합 → 토
+        (2, 11) => Some(Element::Wood),  // 인해합 → 목
+        (3, 10) => Some(Element::Fire),  // 묘술합 → 화
+        (4, 9) => Some(Element::Metal),  // 진유합 → 금
+        (5, 8) => Some(Element::Water),  // 사신합 → 수
+        (6, 7) => Some(Element::Earth),  // 오미합 → 토
+        _ => None,
+    }
+}
+
+/// 충
+fn branch_chung(a: usize, b: usize) -> bool {
+    let diff = (a as i32 - b as i32).unsigned_abs() as usize;
+    diff == 6
+}
+
+/// 형
+fn branch_hyung(a: usize, b: usize) -> bool {
+    let pairs: &[(usize, usize)] = &[
+        (2, 5),   // 인사형
+        (5, 8),   // 사신형
+        (8, 2),   // 신인형
+        (1, 10),  // 축술형
+        (10, 7),  // 술미형
+        (7, 1),   // 미축형
+        (0, 3),   // 자묘형
+        (3, 0),   // 묘자형
+    ];
+    pairs.iter().any(|&(x, y)| (a == x && b == y) || (a == y && b == x))
+}
+
+/// 자형 (self-punishment)
+fn branch_self_hyung(a: usize, b: usize) -> bool {
+    if a != b { return false; }
+    matches!(a, 4 | 6 | 9 | 11) // 진진, 오오, 유유, 해해
+}
+
+/// 파
+fn branch_pa(a: usize, b: usize) -> bool {
+    let pairs: &[(usize, usize)] = &[
+        (0, 9),  // 자유파
+        (1, 4),  // 축진파
+        (2, 11), // 인해파
+        (3, 6),  // 묘오파
+        (5, 8),  // 사신파
+        (10, 7), // 술미파
+    ];
+    pairs.iter().any(|&(x, y)| (a == x && b == y) || (a == y && b == x))
+}
+
+/// 해
+fn branch_hae(a: usize, b: usize) -> bool {
+    let pairs: &[(usize, usize)] = &[
+        (0, 7),   // 자미해
+        (1, 6),   // 축오해
+        (2, 5),   // 인사해
+        (3, 4),   // 묘진해
+        (8, 11),  // 신해해
+        (9, 10),  // 유술해
+    ];
+    pairs.iter().any(|&(x, y)| (a == x && b == y) || (a == y && b == x))
+}
+
+/// 방합 triples
+const BANG_HAP: [(usize, usize, usize, Element); 4] = [
+    (2, 3, 4, Element::Wood),    // 인묘진 → 목
+    (5, 6, 7, Element::Fire),    // 사오미 → 화
+    (8, 9, 10, Element::Metal),  // 신유술 → 금
+    (11, 0, 1, Element::Water),  // 해자축 → 수
+];
+
+/// 삼합 triples
+const SAM_HAP: [(usize, usize, usize, Element); 4] = [
+    (2, 6, 10, Element::Fire),   // 인오술 → 화
+    (11, 3, 7, Element::Wood),   // 해묘미 → 목
+    (8, 0, 4, Element::Water),   // 신자진 → 수
+    (5, 9, 1, Element::Metal),   // 사유축 → 금
+];
+
+pub fn find_branch_interactions(pillars: [Pillar; 4]) -> Vec<BranchInteraction> {
+    const POS: [PillarPosition; 4] = [
+        PillarPosition::Year,
+        PillarPosition::Month,
+        PillarPosition::Day,
+        PillarPosition::Hour,
+    ];
+    let branches: [usize; 4] = [
+        pillars[0].branch,
+        pillars[1].branch,
+        pillars[2].branch,
+        pillars[3].branch,
+    ];
+    let mut result = Vec::new();
+
+    // Pairwise checks (6 pairs)
+    for i in 0..4 {
+        for j in (i + 1)..4 {
+            let a = branches[i];
+            let b = branches[j];
+
+            if let Some(el) = branch_yuk_hap(a, b) {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::YukHap,
+                    positions: vec![POS[i], POS[j]],
+                    branches: vec![a, b],
+                    result_element: Some(el),
+                });
+            }
+            if branch_chung(a, b) {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::Chung,
+                    positions: vec![POS[i], POS[j]],
+                    branches: vec![a, b],
+                    result_element: None,
+                });
+            }
+            if branch_hyung(a, b) || branch_self_hyung(a, b) {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::Hyung,
+                    positions: vec![POS[i], POS[j]],
+                    branches: vec![a, b],
+                    result_element: None,
+                });
+            }
+            if branch_pa(a, b) {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::Pa,
+                    positions: vec![POS[i], POS[j]],
+                    branches: vec![a, b],
+                    result_element: None,
+                });
+            }
+            if branch_hae(a, b) {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::Hae,
+                    positions: vec![POS[i], POS[j]],
+                    branches: vec![a, b],
+                    result_element: None,
+                });
+            }
+        }
+    }
+
+    // Triple checks (방합, 삼합) — check all combinations of 3 pillars
+    let triples: [(usize, usize, usize); 4] = [(0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3)];
+
+    for &(i, j, k) in &triples {
+        let triple = [branches[i], branches[j], branches[k]];
+        let mut tri_sorted = triple;
+        tri_sorted.sort();
+
+        for &(a, b, c, el) in &BANG_HAP {
+            let mut target = [a, b, c];
+            target.sort();
+            if tri_sorted == target {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::BangHap,
+                    positions: vec![POS[i], POS[j], POS[k]],
+                    branches: vec![triple[0], triple[1], triple[2]],
+                    result_element: Some(el),
+                });
+            }
+        }
+
+        for &(a, b, c, el) in &SAM_HAP {
+            let mut target = [a, b, c];
+            target.sort();
+            if tri_sorted == target {
+                result.push(BranchInteraction {
+                    relation: BranchRelationType::SamHap,
+                    positions: vec![POS[i], POS[j], POS[k]],
+                    branches: vec![triple[0], triple[1], triple[2]],
+                    result_element: Some(el),
+                });
+            }
+        }
+    }
+
+    result
+}
+
+// ── Shinsal detection (신살 감지) ──
+
+/// Helper: which samhap group does a branch belong to?
+/// Returns: 0=인오술, 1=해묘미, 2=신자진, 3=사유축
+fn samhap_group(branch: usize) -> usize {
+    match branch {
+        2 | 6 | 10 => 0, // 인오술
+        11 | 3 | 7 => 1, // 해묘미
+        8 | 0 | 4 => 2,  // 신자진
+        5 | 9 | 1 => 3,  // 사유축
+        _ => unreachable!(),
+    }
+}
+
+/// 도화살: 삼합→왕지
+fn dohwa_branch(basis_branch: usize) -> usize {
+    match samhap_group(basis_branch) {
+        0 => 3,  // 인오술 → 묘
+        1 => 0,  // 해묘미 → 자
+        2 => 9,  // 신자진 → 유
+        3 => 6,  // 사유축 → 오
+        _ => unreachable!(),
+    }
+}
+
+/// 역마살: 삼합→충왕지
+fn yeokma_branch(basis_branch: usize) -> usize {
+    match samhap_group(basis_branch) {
+        0 => 8,  // 인오술 → 신
+        1 => 5,  // 해묘미 → 사
+        2 => 2,  // 신자진 → 인
+        3 => 11, // 사유축 → 해
+        _ => unreachable!(),
+    }
+}
+
+/// 천을귀인 (일간 기준)
+fn cheon_eul_branches(day_stem: usize) -> &'static [usize] {
+    match day_stem {
+        0 | 4 | 6 => &[1, 7],  // 갑무경 → 축,미
+        1 | 5 => &[0, 8],      // 을기 → 자,신
+        2 | 3 => &[11, 9],     // 병정 → 해,유
+        7 => &[2, 6],          // 신 → 인,오
+        8 | 9 => &[3, 5],      // 임계 → 묘,사
+        _ => &[],
+    }
+}
+
+/// 문창귀인 (일간 기준)
+fn munchang_branch(day_stem: usize) -> usize {
+    match day_stem {
+        0 => 5,  // 갑→사
+        1 => 6,  // 을→오
+        2 => 8,  // 병→신
+        3 => 9,  // 정→유
+        4 => 8,  // 무→신
+        5 => 9,  // 기→유
+        6 => 11, // 경→해
+        7 => 0,  // 신→자
+        8 => 2,  // 임→인
+        9 => 3,  // 계→묘
+        _ => unreachable!(),
+    }
+}
+
+/// 학당귀인 (일간 기준)
+fn hakdang_branch(day_stem: usize) -> usize {
+    match day_stem {
+        0 => 11, // 갑→해
+        1 => 0,  // 을→자
+        2 => 2,  // 병→인
+        3 => 3,  // 정→묘
+        4 => 2,  // 무→인
+        5 => 3,  // 기→묘
+        6 => 5,  // 경→사
+        7 => 6,  // 신→오
+        8 => 8,  // 임→신
+        9 => 9,  // 계→유
+        _ => unreachable!(),
+    }
+}
+
+/// 천덕귀인 (월지 기준) — returns branch to look for
+fn cheondeok_branch(month_branch: usize) -> Option<usize> {
+    match month_branch {
+        0 => Some(5),   // 자월→사
+        1 => Some(6),   // 축월→오
+        2 => Some(11),  // 인월→해
+        3 => Some(8),   // 묘월→신
+        4 => Some(3),   // 진월→묘
+        5 => Some(2),   // 사월→인
+        6 => Some(1),   // 오월→축
+        7 => Some(0),   // 미월→자
+        8 => Some(9),   // 신월→유
+        9 => Some(10),  // 유월→술
+        10 => Some(7),  // 술월→미
+        11 => Some(4),  // 해월→진
+        _ => None,
+    }
+}
+
+/// 월덕귀인 (월지 기준) — returns stem to look for
+fn woldeok_stem(month_branch: usize) -> Option<usize> {
+    match samhap_group(month_branch) {
+        0 => Some(2), // 인오술월 → 병
+        3 => Some(6), // 사유축월 → 경
+        2 => Some(8), // 신자진월 → 임
+        1 => Some(0), // 해묘미월 → 갑
+        _ => None,
+    }
+}
+
+/// 양인살 (일간 기준, 양간만)
+fn yangin_branch(day_stem: usize) -> Option<usize> {
+    match day_stem {
+        0 => Some(3),  // 갑→묘
+        2 | 4 => Some(6), // 병,무→오
+        6 => Some(9),  // 경→유
+        8 => Some(0),  // 임→자
+        _ => None, // 음간은 없음
+    }
+}
+
+/// 공망 (일주 기준) — returns two branches that are 공망
+pub fn gongmang(day_stem: usize, day_branch: usize) -> [usize; 2] {
+    // 60간지 순서에서 일주의 순(旬)의 마지막 두 지지가 공망
+    // day_stem과 day_branch로 60간지 index를 구한다
+    // 순(旬)은 10개씩 묶인 그룹. 해당 순에서 빠진 2개 지지가 공망.
+    // 빠진 지지 = 10 + day_branch - day_stem 부터 2개 (mod 12)
+    let first = (10 + day_branch as i32 - day_stem as i32).rem_euclid(12) as usize;
+    let second = (first + 1) % 12;
+    [first, second]
+}
+
+/// 괴강살 (일주: 경진, 경술, 임진, 임술)
+fn is_goegang(day_stem: usize, day_branch: usize) -> bool {
+    matches!((day_stem, day_branch), (6, 4) | (6, 10) | (8, 4) | (8, 10))
+}
+
+/// 백호살 (연지 기준)
+fn baekho_branch(year_branch: usize) -> Option<usize> {
+    match year_branch {
+        0 => Some(6),   // 자→오
+        1 => Some(5),   // 축→사
+        2 => Some(4),   // 인→진
+        3 => Some(3),   // 묘→묘
+        4 => Some(2),   // 진→인
+        5 => Some(1),   // 사→축
+        6 => Some(0),   // 오→자
+        7 => Some(11),  // 미→해
+        8 => Some(10),  // 신→술
+        9 => Some(9),   // 유→유
+        10 => Some(8),  // 술→신
+        11 => Some(7),  // 해→미
+        _ => None,
+    }
+}
+
+/// 원진살
+fn wonjin_branch(basis_branch: usize) -> usize {
+    match basis_branch {
+        0 => 7,   // 자→미
+        1 => 6,   // 축→오
+        2 => 5,   // 인→사
+        3 => 4,   // 묘→진
+        4 => 3,   // 진→묘
+        5 => 2,   // 사→인
+        6 => 1,   // 오→축
+        7 => 0,   // 미→자
+        8 => 11,  // 신→해
+        9 => 10,  // 유→술
+        10 => 9,  // 술→유
+        11 => 8,  // 해→신
+        _ => unreachable!(),
+    }
+}
+
+/// 귀문관살
+fn gwimun_branch(basis_branch: usize) -> Option<usize> {
+    match basis_branch {
+        0 => Some(9),   // 자→유
+        1 => Some(10),  // 축→술
+        2 => Some(7),   // 인→미
+        3 => Some(8),   // 묘→신
+        4 => Some(5),   // 진→사
+        5 => Some(4),   // 사→진
+        6 => Some(3),   // 오→묘
+        7 => Some(2),   // 미→인
+        8 => Some(3),   // 신→묘
+        9 => Some(0),   // 유→자
+        10 => Some(1),  // 술→축
+        11 => Some(6),  // 해→오
+        _ => None,
+    }
+}
+
+pub fn find_shinsal(pillars: [Pillar; 4]) -> Vec<ShinsalEntry> {
+    const POS: [PillarPosition; 4] = [
+        PillarPosition::Year,
+        PillarPosition::Month,
+        PillarPosition::Day,
+        PillarPosition::Hour,
+    ];
+    let branches: [usize; 4] = [
+        pillars[0].branch,
+        pillars[1].branch,
+        pillars[2].branch,
+        pillars[3].branch,
+    ];
+    let stems: [usize; 4] = [
+        pillars[0].stem,
+        pillars[1].stem,
+        pillars[2].stem,
+        pillars[3].stem,
+    ];
+    let day_stem = pillars[2].stem;
+    let day_branch = pillars[2].branch;
+    let year_branch = pillars[0].branch;
+    let month_branch = pillars[1].branch;
+
+    let mut entries = Vec::new();
+
+    // 도화살 (연지/일지 기준)
+    for &basis_idx in &[0usize, 2] {
+        let target = dohwa_branch(branches[basis_idx]);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| i != basis_idx && branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::DoHwaSal,
+                found_at: found,
+                basis: POS[basis_idx],
+            });
+        }
+    }
+
+    // 천을귀인 (일간 기준)
+    {
+        let targets = cheon_eul_branches(day_stem);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| targets.contains(&branches[i]))
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::CheonEulGwiIn,
+                found_at: found,
+                basis: PillarPosition::Day,
+            });
+        }
+    }
+
+    // 역마살 (연지/일지 기준)
+    for &basis_idx in &[0usize, 2] {
+        let target = yeokma_branch(branches[basis_idx]);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| i != basis_idx && branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::YeokMaSal,
+                found_at: found,
+                basis: POS[basis_idx],
+            });
+        }
+    }
+
+    // 문창귀인 (일간 기준)
+    {
+        let target = munchang_branch(day_stem);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::MunChangGwiIn,
+                found_at: found,
+                basis: PillarPosition::Day,
+            });
+        }
+    }
+
+    // 학당귀인 (일간 기준)
+    {
+        let target = hakdang_branch(day_stem);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::HakDangGwiIn,
+                found_at: found,
+                basis: PillarPosition::Day,
+            });
+        }
+    }
+
+    // 천덕귀인 (월지 기준)
+    if let Some(target) = cheondeok_branch(month_branch) {
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::CheonDeokGwiIn,
+                found_at: found,
+                basis: PillarPosition::Month,
+            });
+        }
+    }
+
+    // 월덕귀인 (월지 기준, 천간 검사)
+    if let Some(target_stem) = woldeok_stem(month_branch) {
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| stems[i] == target_stem)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::WolDeokGwiIn,
+                found_at: found,
+                basis: PillarPosition::Month,
+            });
+        }
+    }
+
+    // 양인살 (일간 기준, 양간만)
+    if let Some(target) = yangin_branch(day_stem) {
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::YangInSal,
+                found_at: found,
+                basis: PillarPosition::Day,
+            });
+        }
+    }
+
+    // 공망 (일주 기준)
+    {
+        let gm = gongmang(day_stem, day_branch);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| i != 2 && (branches[i] == gm[0] || branches[i] == gm[1]))
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::GongMang,
+                found_at: found,
+                basis: PillarPosition::Day,
+            });
+        }
+    }
+
+    // 괴강살 (일주)
+    if is_goegang(day_stem, day_branch) {
+        entries.push(ShinsalEntry {
+            kind: ShinsalKind::GoeGangSal,
+            found_at: vec![PillarPosition::Day],
+            basis: PillarPosition::Day,
+        });
+    }
+
+    // 백호살 (연지 기준)
+    if let Some(target) = baekho_branch(year_branch) {
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| i != 0 && branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::BaekHoSal,
+                found_at: found,
+                basis: PillarPosition::Year,
+            });
+        }
+    }
+
+    // 원진살 (연지/일지 기준)
+    for &basis_idx in &[0usize, 2] {
+        let target = wonjin_branch(branches[basis_idx]);
+        let found: Vec<PillarPosition> = (0..4)
+            .filter(|&i| i != basis_idx && branches[i] == target)
+            .map(|i| POS[i])
+            .collect();
+        if !found.is_empty() {
+            entries.push(ShinsalEntry {
+                kind: ShinsalKind::WonJinSal,
+                found_at: found,
+                basis: POS[basis_idx],
+            });
+        }
+    }
+
+    // 귀문관살 (연지/일지 기준)
+    for &basis_idx in &[0usize, 2] {
+        if let Some(target) = gwimun_branch(branches[basis_idx]) {
+            let found: Vec<PillarPosition> = (0..4)
+                .filter(|&i| i != basis_idx && branches[i] == target)
+                .map(|i| POS[i])
+                .collect();
+            if !found.is_empty() {
+                entries.push(ShinsalEntry {
+                    kind: ShinsalKind::GwiMunGwanSal,
+                    found_at: found,
+                    basis: POS[basis_idx],
+                });
+            }
+        }
+    }
+
+    entries
 }
 
 pub fn assess_strength(day_stem: usize, pillars: [Pillar; 4]) -> StrengthResult {

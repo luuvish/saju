@@ -33,27 +33,20 @@ pub struct LocationItem {
     pub display: String,
 }
 
-pub struct PillarView {
+pub struct PillarColumnView {
     pub kind: String,
-    pub label: String,
-    pub stem_word: String,
-    pub stem_element: String,
-    pub stem_polarity: String,
-    pub branch_word: String,
-    pub branch_element: String,
-    pub branch_polarity: String,
+    pub stem_god: String,
+    pub stem_label: String,
+    pub stem_sub: String,
     pub stem_css: String,
+    pub branch_god: String,
+    pub branch_label: String,
+    pub branch_sub: String,
     pub branch_css: String,
-}
-
-pub struct HiddenStemRow {
-    pub kind: String,
-    pub stems: String,
-}
-
-pub struct TenGodsHiddenRow {
-    pub kind: String,
-    pub stems: String,
+    pub hidden_stems: String,
+    pub stage: String,
+    pub shinsal: String,
+    pub is_day: bool,
 }
 
 pub struct ElementView {
@@ -65,28 +58,57 @@ pub struct ElementView {
 
 pub struct DaewonView {
     pub age: String,
-    pub pillar: String,
+    pub stem_label: String,
+    pub stem_sub: String,
+    pub stem_css: String,
     pub stem_god: String,
+    pub branch_label: String,
+    pub branch_sub: String,
+    pub branch_css: String,
     pub branch_god: String,
-    pub css: String,
+    pub stage: String,
+    pub is_current: bool,
 }
 
 pub struct YearlyLuckView {
     pub label: String,
-    pub period: String,
-    pub pillar: String,
+    pub stem_label: String,
+    pub stem_sub: String,
+    pub stem_css: String,
     pub stem_god: String,
+    pub branch_label: String,
+    pub branch_sub: String,
+    pub branch_css: String,
     pub branch_god: String,
-    pub css: String,
+    pub stage: String,
+    pub is_current: bool,
+}
+
+pub struct InteractionView {
+    pub relation_label: String,
+    pub positions_label: String,
+    pub detail: String,
+    pub css_class: String,
+}
+
+pub struct ShinsalView {
+    pub name: String,
+    pub found_at: String,
+    pub basis: String,
 }
 
 pub struct MonthlyLuckItemView {
     pub label: String,
-    pub period: String,
-    pub pillar: String,
+    pub stem_label: String,
+    pub stem_sub: String,
+    pub stem_css: String,
     pub stem_god: String,
+    pub branch_label: String,
+    pub branch_sub: String,
+    pub branch_css: String,
     pub branch_god: String,
-    pub css: String,
+    pub stage: String,
+    pub is_current: bool,
 }
 
 #[derive(Template)]
@@ -104,22 +126,14 @@ pub struct ResultTemplate {
     pub converted_lunar_line: Option<String>,
     pub gender_line: String,
 
-    pub pillars_heading: String,
-    pub pillars: Vec<PillarView>,
+    pub pillars_table_heading: String,
+    pub pillar_columns: Vec<PillarColumnView>,
 
-    pub hidden_stems_heading: String,
-    pub hidden_stems: Vec<HiddenStemRow>,
+    pub relations_heading: String,
+    pub relations: Vec<InteractionView>,
 
-    pub ten_gods_heading: String,
-    pub ten_gods_stem_line: String,
-    pub ten_gods_branch_line: String,
-    pub ten_gods_hidden: Vec<TenGodsHiddenRow>,
-
-    pub twelve_stages_heading: String,
-    pub twelve_stages_line: String,
-
-    pub twelve_shinsal_heading: String,
-    pub twelve_shinsal_line: String,
+    pub shinsal_extra_heading: String,
+    pub shinsal_extra: Vec<ShinsalView>,
 
     pub strength_heading: String,
     pub strength: Vec<String>,
@@ -134,7 +148,6 @@ pub struct ResultTemplate {
     pub yearly_luck_items: Vec<YearlyLuckView>,
 
     pub monthly_luck_heading: String,
-    pub monthly_luck_year_line: String,
     pub monthly_luck_items: Vec<MonthlyLuckItemView>,
 }
 

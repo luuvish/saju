@@ -14,78 +14,110 @@
         </ul>
     </section>
 
-    <!-- Pillars -->
+    <!-- Pillar Table -->
     <section class="section">
-        <h3>{{ pillars_heading }}</h3>
-        <div class="pillars-grid">
-            {% for p in pillars %}
-            <div class="pillar-card">
-                <div class="pillar-kind">{{ p.kind }}</div>
-                <div class="pillar-stem {{ p.stem_css }}">
-                    <span class="pillar-label">{{ p.label }}</span>
+        <h3>{{ pillars_table_heading }}</h3>
+        <div class="pillar-table">
+            <!-- Header row -->
+            <div class="pt-row pt-header">
+                <div class="pt-label"></div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell">{{ col.kind }}</div>
+                {% endfor %}
+            </div>
+            <!-- Stem Ten Gods row -->
+            <div class="pt-row">
+                <div class="pt-label">십성</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell pt-god">{{ col.stem_god }}</div>
+                {% endfor %}
+            </div>
+            <!-- Stem card row -->
+            <div class="pt-row">
+                <div class="pt-label">천간</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell">
+                    <div class="pt-card {{ col.stem_css }}{% if col.is_day %} pt-day{% endif %}">
+                        {{ col.stem_label }}
+                    </div>
+                    <div class="pt-sub">{{ col.stem_sub }}</div>
                 </div>
-                <div class="pillar-detail">
-                    <span class="{{ p.stem_css }}">{{ p.stem_word }}: {{ p.stem_element }} {{ p.stem_polarity }}</span>
+                {% endfor %}
+            </div>
+            <!-- Branch card row -->
+            <div class="pt-row">
+                <div class="pt-label">지지</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell">
+                    <div class="pt-card {{ col.branch_css }}">
+                        {{ col.branch_label }}
+                    </div>
+                    <div class="pt-sub">{{ col.branch_sub }}</div>
                 </div>
-                <div class="pillar-detail">
-                    <span class="{{ p.branch_css }}">{{ p.branch_word }}: {{ p.branch_element }} {{ p.branch_polarity }}</span>
-                </div>
+                {% endfor %}
+            </div>
+            <!-- Branch Ten Gods row -->
+            <div class="pt-row">
+                <div class="pt-label">십성</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell pt-god">{{ col.branch_god }}</div>
+                {% endfor %}
+            </div>
+            <!-- Hidden Stems row -->
+            <div class="pt-row">
+                <div class="pt-label">지장간</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell pt-text">{{ col.hidden_stems }}</div>
+                {% endfor %}
+            </div>
+            <!-- 12 Stages row -->
+            <div class="pt-row">
+                <div class="pt-label">12운성</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell pt-text">{{ col.stage }}</div>
+                {% endfor %}
+            </div>
+            <!-- 12 Shinsal row -->
+            <div class="pt-row">
+                <div class="pt-label">12신살</div>
+                {% for col in pillar_columns %}
+                <div class="pt-cell pt-text">{{ col.shinsal }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Relations (합충형파해) -->
+    {% if !relations.is_empty() %}
+    <section class="section">
+        <h3>{{ relations_heading }}</h3>
+        <div class="relations-list">
+            {% for rel in relations %}
+            <div class="relation-item {{ rel.css_class }}">
+                <span class="relation-type">{{ rel.relation_label }}</span>
+                <span class="relation-positions">{{ rel.positions_label }}</span>
+                <span class="relation-detail">{{ rel.detail }}</span>
             </div>
             {% endfor %}
         </div>
     </section>
+    {% endif %}
 
-    <!-- Hidden Stems -->
+    <!-- Shinsal (신살) -->
+    {% if !shinsal_extra.is_empty() %}
     <section class="section">
-        <h3>{{ hidden_stems_heading }}</h3>
-        <div class="info-list">
-            {% for row in hidden_stems %}
-            <div class="info-row">
-                <span class="info-label">{{ row.kind }}</span>
-                <span class="info-value">{{ row.stems }}</span>
+        <h3>{{ shinsal_extra_heading }}</h3>
+        <div class="shinsal-grid">
+            {% for ss in shinsal_extra %}
+            <div class="shinsal-item">
+                <span class="shinsal-name">{{ ss.name }}</span>
+                <span class="shinsal-at">{{ ss.found_at }}</span>
+                <span class="shinsal-basis">{{ ss.basis }}</span>
             </div>
             {% endfor %}
         </div>
     </section>
-
-    <!-- Ten Gods -->
-    <section class="section">
-        <h3>{{ ten_gods_heading }}</h3>
-        <div class="info-list">
-            <div class="info-row">
-                <span class="info-value">{{ ten_gods_stem_line }}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-value">{{ ten_gods_branch_line }}</span>
-            </div>
-            {% for row in ten_gods_hidden %}
-            <div class="info-row">
-                <span class="info-label">{{ row.kind }}</span>
-                <span class="info-value">{{ row.stems }}</span>
-            </div>
-            {% endfor %}
-        </div>
-    </section>
-
-    <!-- 12 Stages -->
-    <section class="section">
-        <h3>{{ twelve_stages_heading }}</h3>
-        <div class="info-list">
-            <div class="info-row">
-                <span class="info-value">{{ twelve_stages_line }}</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- 12 Shinsal -->
-    <section class="section">
-        <h3>{{ twelve_shinsal_heading }}</h3>
-        <div class="info-list">
-            <div class="info-row">
-                <span class="info-value">{{ twelve_shinsal_line }}</span>
-            </div>
-        </div>
-    </section>
+    {% endif %}
 
     <!-- Strength -->
     <section class="section">
@@ -118,7 +150,7 @@
                 <canvas id="elementsChart"
                     data-labels='[{% for el in elements %}"{{ el.name }}"{% if !loop.last %},{% endif %}{% endfor %}]'
                     data-values='[{% for el in elements %}{{ el.count }}{% if !loop.last %},{% endif %}{% endfor %}]'
-                    data-colors='["#4caf50","#f44336","#ffc107","#9e9e9e","#2196f3"]'>
+                    data-colors='["#2e7d32","#d32f2f","#f9a825","#bdbdbd","#424242"]'>
                 </canvas>
             </div>
         </div>
@@ -127,12 +159,17 @@
     <!-- Daewon -->
     <section class="section">
         <h3>{{ daewon_heading }}</h3>
-        <div class="luck-timeline">
+        <div class="luck-timeline luck-compact">
             {% for item in daewon_items %}
-            <div class="luck-card {{ item.css }}">
+            <div class="luck-card{% if item.is_current %} luck-current{% endif %}">
                 <div class="luck-age">{{ item.age }}</div>
-                <div class="luck-pillar">{{ item.pillar }}</div>
-                <div class="luck-gods">{{ item.stem_god }} / {{ item.branch_god }}</div>
+                <div class="luck-god">{{ item.stem_god }}</div>
+                <div class="pt-card {{ item.stem_css }}">{{ item.stem_label }}</div>
+                <div class="pt-sub">{{ item.stem_sub }}</div>
+                <div class="pt-card {{ item.branch_css }}">{{ item.branch_label }}</div>
+                <div class="pt-sub">{{ item.branch_sub }}</div>
+                <div class="luck-god">{{ item.branch_god }}</div>
+                <div class="luck-stage">{{ item.stage }}</div>
             </div>
             {% endfor %}
         </div>
@@ -141,13 +178,17 @@
     <!-- Yearly Luck -->
     <section class="section">
         <h3>{{ yearly_luck_heading }}</h3>
-        <div class="luck-timeline">
+        <div class="luck-timeline luck-compact">
             {% for item in yearly_luck_items %}
-            <div class="luck-card {{ item.css }}">
+            <div class="luck-card{% if item.is_current %} luck-current{% endif %}">
                 <div class="luck-age">{{ item.label }}</div>
-                <div class="luck-pillar">{{ item.pillar }}</div>
-                <div class="luck-period">{{ item.period }}</div>
-                <div class="luck-gods">{{ item.stem_god }} / {{ item.branch_god }}</div>
+                <div class="luck-god">{{ item.stem_god }}</div>
+                <div class="pt-card {{ item.stem_css }}">{{ item.stem_label }}</div>
+                <div class="pt-sub">{{ item.stem_sub }}</div>
+                <div class="pt-card {{ item.branch_css }}">{{ item.branch_label }}</div>
+                <div class="pt-sub">{{ item.branch_sub }}</div>
+                <div class="luck-god">{{ item.branch_god }}</div>
+                <div class="luck-stage">{{ item.stage }}</div>
             </div>
             {% endfor %}
         </div>
@@ -156,20 +197,21 @@
     <!-- Monthly Luck -->
     <section class="section">
         <h3>{{ monthly_luck_heading }}</h3>
-        <div class="info-list">
-            <div class="info-row monthly-year">
-                <span class="info-value">{{ monthly_luck_year_line }}</span>
-            </div>
-        </div>
-        <div class="luck-timeline">
+        <div class="luck-timeline luck-compact">
             {% for item in monthly_luck_items %}
-            <div class="luck-card {{ item.css }}">
+            <div class="luck-card{% if item.is_current %} luck-current{% endif %}">
                 <div class="luck-age">{{ item.label }}</div>
-                <div class="luck-pillar">{{ item.pillar }}</div>
-                <div class="luck-period">{{ item.period }}</div>
-                <div class="luck-gods">{{ item.stem_god }} / {{ item.branch_god }}</div>
+                <div class="luck-god">{{ item.stem_god }}</div>
+                <div class="pt-card {{ item.stem_css }}">{{ item.stem_label }}</div>
+                <div class="pt-sub">{{ item.stem_sub }}</div>
+                <div class="pt-card {{ item.branch_css }}">{{ item.branch_label }}</div>
+                <div class="pt-sub">{{ item.branch_sub }}</div>
+                <div class="luck-god">{{ item.branch_god }}</div>
+                <div class="luck-stage">{{ item.stage }}</div>
             </div>
             {% endfor %}
         </div>
     </section>
+
+
 </div>

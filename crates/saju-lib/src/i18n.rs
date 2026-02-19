@@ -1,5 +1,6 @@
 use crate::types::{
-    Direction, Element, Gender, Pillar, StrengthClass, StrengthVerdict, TenGod, TermDef,
+    BranchRelationType, Direction, Element, Gender, Pillar, PillarPosition, ShinsalKind,
+    StemRelationType, StrengthClass, StrengthVerdict, TenGod, TermDef,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -153,8 +154,8 @@ impl I18n {
 
     pub fn monthly_luck_heading(&self, year: i32) -> String {
         match self.lang {
-            Lang::Ko => format!("월운 ({}년, 입춘~다음 입춘)", year),
-            Lang::En => format!("Monthly Luck ({}: Lichun to next Lichun)", year),
+            Lang::Ko => format!("월운 ({}년)", year),
+            Lang::En => format!("Monthly Luck ({})", year),
         }
     }
 
@@ -429,7 +430,7 @@ impl I18n {
             (Lang::Ko, TenGod::SangGwan) => "상관(傷官)",
             (Lang::Ko, TenGod::PyeonJae) => "편재(偏財)",
             (Lang::Ko, TenGod::JeongJae) => "정재(正財)",
-            (Lang::Ko, TenGod::ChilSal) => "칠살(七殺)",
+            (Lang::Ko, TenGod::ChilSal) => "편관(偏官)",
             (Lang::Ko, TenGod::JeongGwan) => "정관(正官)",
             (Lang::Ko, TenGod::PyeonIn) => "편인(偏印)",
             (Lang::Ko, TenGod::JeongIn) => "정인(正印)",
@@ -439,7 +440,7 @@ impl I18n {
             (Lang::En, TenGod::SangGwan) => "Hurting Officer (傷官)",
             (Lang::En, TenGod::PyeonJae) => "Indirect Wealth (偏財)",
             (Lang::En, TenGod::JeongJae) => "Direct Wealth (正財)",
-            (Lang::En, TenGod::ChilSal) => "Seven Killings (七殺)",
+            (Lang::En, TenGod::ChilSal) => "Indirect Officer (偏官)",
             (Lang::En, TenGod::JeongGwan) => "Direct Officer (正官)",
             (Lang::En, TenGod::PyeonIn) => "Indirect Resource (偏印)",
             (Lang::En, TenGod::JeongIn) => "Direct Resource (正印)",
@@ -578,6 +579,99 @@ impl I18n {
 
     pub fn branch_label(&self, branch: usize) -> String {
         format!("{}({})", self.branch_name(branch), BRANCHES_HANJA[branch])
+    }
+
+    pub fn stem_relation_label(&self, rel: StemRelationType) -> &'static str {
+        match (self.lang, rel) {
+            (Lang::Ko, StemRelationType::Hap) => "천간합(天干合)",
+            (Lang::Ko, StemRelationType::Chung) => "천간충(天干沖)",
+            (Lang::En, StemRelationType::Hap) => "Stem Combine (天干合)",
+            (Lang::En, StemRelationType::Chung) => "Stem Clash (天干沖)",
+        }
+    }
+
+    pub fn branch_relation_label(&self, rel: BranchRelationType) -> &'static str {
+        match (self.lang, rel) {
+            (Lang::Ko, BranchRelationType::YukHap) => "육합(六合)",
+            (Lang::Ko, BranchRelationType::Chung) => "충(沖)",
+            (Lang::Ko, BranchRelationType::Hyung) => "형(刑)",
+            (Lang::Ko, BranchRelationType::Pa) => "파(破)",
+            (Lang::Ko, BranchRelationType::Hae) => "해(害)",
+            (Lang::Ko, BranchRelationType::BangHap) => "방합(方合)",
+            (Lang::Ko, BranchRelationType::SamHap) => "삼합(三合)",
+            (Lang::En, BranchRelationType::YukHap) => "Six Combine (六合)",
+            (Lang::En, BranchRelationType::Chung) => "Clash (沖)",
+            (Lang::En, BranchRelationType::Hyung) => "Punishment (刑)",
+            (Lang::En, BranchRelationType::Pa) => "Break (破)",
+            (Lang::En, BranchRelationType::Hae) => "Harm (害)",
+            (Lang::En, BranchRelationType::BangHap) => "Directional (方合)",
+            (Lang::En, BranchRelationType::SamHap) => "Triple (三合)",
+        }
+    }
+
+    pub fn shinsal_kind_label(&self, kind: ShinsalKind) -> &'static str {
+        match (self.lang, kind) {
+            (Lang::Ko, ShinsalKind::DoHwaSal) => "도화살(桃花殺)",
+            (Lang::Ko, ShinsalKind::CheonEulGwiIn) => "천을귀인(天乙貴人)",
+            (Lang::Ko, ShinsalKind::YeokMaSal) => "역마살(驛馬殺)",
+            (Lang::Ko, ShinsalKind::MunChangGwiIn) => "문창귀인(文昌貴人)",
+            (Lang::Ko, ShinsalKind::HakDangGwiIn) => "학당귀인(學堂貴人)",
+            (Lang::Ko, ShinsalKind::CheonDeokGwiIn) => "천덕귀인(天德貴人)",
+            (Lang::Ko, ShinsalKind::WolDeokGwiIn) => "월덕귀인(月德貴人)",
+            (Lang::Ko, ShinsalKind::YangInSal) => "양인살(羊刃殺)",
+            (Lang::Ko, ShinsalKind::GongMang) => "공망(空亡)",
+            (Lang::Ko, ShinsalKind::BaekHoSal) => "백호살(白虎殺)",
+            (Lang::Ko, ShinsalKind::GoeGangSal) => "괴강살(魁罡殺)",
+            (Lang::Ko, ShinsalKind::WonJinSal) => "원진살(怨嗔殺)",
+            (Lang::Ko, ShinsalKind::GwiMunGwanSal) => "귀문관살(鬼門關殺)",
+            (Lang::En, ShinsalKind::DoHwaSal) => "Peach Blossom (桃花殺)",
+            (Lang::En, ShinsalKind::CheonEulGwiIn) => "Heavenly Noble (天乙貴人)",
+            (Lang::En, ShinsalKind::YeokMaSal) => "Travel Horse (驛馬殺)",
+            (Lang::En, ShinsalKind::MunChangGwiIn) => "Literary Star (文昌貴人)",
+            (Lang::En, ShinsalKind::HakDangGwiIn) => "Academic Star (學堂貴人)",
+            (Lang::En, ShinsalKind::CheonDeokGwiIn) => "Heavenly Virtue (天德貴人)",
+            (Lang::En, ShinsalKind::WolDeokGwiIn) => "Monthly Virtue (月德貴人)",
+            (Lang::En, ShinsalKind::YangInSal) => "Blade (羊刃殺)",
+            (Lang::En, ShinsalKind::GongMang) => "Void (空亡)",
+            (Lang::En, ShinsalKind::BaekHoSal) => "White Tiger (白虎殺)",
+            (Lang::En, ShinsalKind::GoeGangSal) => "Kuigang (魁罡殺)",
+            (Lang::En, ShinsalKind::WonJinSal) => "Grudge (怨嗔殺)",
+            (Lang::En, ShinsalKind::GwiMunGwanSal) => "Ghost Gate (鬼門關殺)",
+        }
+    }
+
+    pub fn position_label(&self, pos: PillarPosition) -> &'static str {
+        match (self.lang, pos) {
+            (Lang::Ko, PillarPosition::Year) => "년",
+            (Lang::Ko, PillarPosition::Month) => "월",
+            (Lang::Ko, PillarPosition::Day) => "일",
+            (Lang::Ko, PillarPosition::Hour) => "시",
+            (Lang::En, PillarPosition::Year) => "Year",
+            (Lang::En, PillarPosition::Month) => "Month",
+            (Lang::En, PillarPosition::Day) => "Day",
+            (Lang::En, PillarPosition::Hour) => "Hour",
+        }
+    }
+
+    pub fn relations_heading(&self) -> &'static str {
+        match self.lang {
+            Lang::Ko => "합충형파해(合沖刑破害)",
+            Lang::En => "Interactions",
+        }
+    }
+
+    pub fn shinsal_extra_heading(&self) -> &'static str {
+        match self.lang {
+            Lang::Ko => "주요 신살(神殺)",
+            Lang::En => "Key Spirits",
+        }
+    }
+
+    pub fn basis_position_label(&self, pos: PillarPosition) -> String {
+        match self.lang {
+            Lang::Ko => format!("{}주 기준", self.position_label(pos)),
+            Lang::En => format!("{} basis", self.position_label(pos)),
+        }
     }
 
     fn stem_name(&self, stem: usize) -> &'static str {

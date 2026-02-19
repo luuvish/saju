@@ -3,7 +3,10 @@ use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike, 
 use crate::bazi::StrengthResult;
 use crate::luck::{DaewonItem, MonthlyLuck, YearLuck};
 use crate::timezone::TimeZoneSpec;
-use crate::types::{Direction, Gender, LmtInfo, LunarDate, Pillar, SolarTerm};
+use crate::types::{
+    BranchInteraction, Direction, Gender, LmtInfo, LunarDate, Pillar, ShinsalEntry, SolarTerm,
+    StemInteraction,
+};
 use crate::{astro, bazi, location, luck, lunar, timezone};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,6 +50,10 @@ pub struct SajuResult {
     pub hour_pillar: Pillar,
 
     pub strength: StrengthResult,
+
+    pub stem_interactions: Vec<StemInteraction>,
+    pub branch_interactions: Vec<BranchInteraction>,
+    pub shinsal_entries: Vec<ShinsalEntry>,
 
     pub daewon_direction: Direction,
     pub daewon_start_months: i32,
@@ -202,17 +209,18 @@ pub fn calculate(req: &SajuRequest) -> Result<SajuResult, String> {
     let month_year = req
         .month_year
         .unwrap_or_else(|| tz_spec.to_local(Utc::now()).year());
-    let year_start = req.year_start.unwrap_or(month_year);
+    let year_start = req.year_start.unwrap_or(month_year - 3);
     if req.year_count == 0 {
         return Err("year-count must be at least 1".to_string());
     }
 
     let yearly_luck = luck::yearly_luck(year_start, req.year_count)?;
     let monthly_luck = luck::monthly_luck(month_year)?;
-    let strength = bazi::assess_strength(
-        day_stem,
-        [year_pillar, month_pillar, day_pillar, hour_pillar],
-    );
+    let four_pillars = [year_pillar, month_pillar, day_pillar, hour_pillar];
+    let strength = bazi::assess_strength(day_stem, four_pillars);
+    let stem_interactions = bazi::find_stem_interactions(four_pillars);
+    let branch_interactions = bazi::find_branch_interactions(four_pillars);
+    let shinsal_entries = bazi::find_shinsal(four_pillars);
 
     Ok(SajuResult {
         input_date: req.date.format("%Y-%m-%d").to_string(),
@@ -229,6 +237,9 @@ pub fn calculate(req: &SajuRequest) -> Result<SajuResult, String> {
         day_pillar,
         hour_pillar,
         strength,
+        stem_interactions,
+        branch_interactions,
+        shinsal_entries,
         daewon_direction: direction,
         daewon_start_months: start_months,
         daewon_items,

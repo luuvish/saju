@@ -7,6 +7,71 @@ pub struct Pillar {
     pub branch: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum PillarPosition {
+    Year,
+    Month,
+    Day,
+    Hour,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum StemRelationType {
+    Hap,
+    Chung,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum BranchRelationType {
+    YukHap,
+    Chung,
+    Hyung,
+    Pa,
+    Hae,
+    BangHap,
+    SamHap,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct StemInteraction {
+    pub relation: StemRelationType,
+    pub positions: [PillarPosition; 2],
+    pub stems: [usize; 2],
+    pub result_element: Option<Element>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct BranchInteraction {
+    pub relation: BranchRelationType,
+    pub positions: Vec<PillarPosition>,
+    pub branches: Vec<usize>,
+    pub result_element: Option<Element>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum ShinsalKind {
+    DoHwaSal,
+    CheonEulGwiIn,
+    YeokMaSal,
+    MunChangGwiIn,
+    HakDangGwiIn,
+    CheonDeokGwiIn,
+    WolDeokGwiIn,
+    YangInSal,
+    GongMang,
+    BaekHoSal,
+    GoeGangSal,
+    WonJinSal,
+    GwiMunGwanSal,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ShinsalEntry {
+    pub kind: ShinsalKind,
+    pub found_at: Vec<PillarPosition>,
+    pub basis: PillarPosition,
+}
+
 #[derive(Clone, Copy, Debug, Serialize)]
 pub enum Gender {
     Male,

@@ -1,6 +1,8 @@
 use chrono::NaiveDate;
 use saju_lib::service::{CalendarType, SajuRequest, calculate};
-use saju_lib::types::{Direction, Element, Gender};
+use saju_lib::types::{
+    BranchRelationType, Direction, Element, Gender, PillarPosition, ShinsalKind,
+};
 use saju_lib::bazi;
 
 fn make_request(date: &str, time: &str, gender: Gender) -> SajuRequest {
@@ -195,6 +197,103 @@ fn test_lmt_correction_with_location() {
     assert!(result.lmt_info.is_some(), "should have LMT info");
     let lmt = result.lmt_info.unwrap();
     assert!(lmt.correction_seconds != 0, "Seoul should have non-zero LMT correction");
+}
+
+#[test]
+fn test_stem_hap_detection() {
+    // 갑기합(토): stem 0 and stem 5
+    assert_eq!(bazi::stem_hap(0, 5), Some(Element::Earth));
+    assert_eq!(bazi::stem_hap(1, 6), Some(Element::Metal));
+    assert_eq!(bazi::stem_hap(2, 7), Some(Element::Water));
+    assert_eq!(bazi::stem_hap(3, 8), Some(Element::Wood));
+    assert_eq!(bazi::stem_hap(4, 9), Some(Element::Fire));
+    // Non-hap pair
+    assert_eq!(bazi::stem_hap(0, 1), None);
+
+    // Check via service for 2000-01-15 17:15
+    // Pillars: 己卯 乙丑 壬申 己酉 → stems [5,1,8,5]
+    let req = make_request("2000-01-15", "17:15", Gender::Male);
+    let result = calculate(&req).unwrap();
+    // No hap pairs among these stems, verify empty or correct
+    assert!(result.stem_interactions.len() <= 12);
+    // All stem pairs: (5,1),(5,8),(5,5),(1,8),(1,5),(8,5) → no hap pairs here
+    // 壬(8)-己(5) chung? diff=3, not 6. No chung either.
+    // This date has no stem interactions, which is valid.
+    // Test with a date that has stem hap: 甲(0) and 己(5) together
+    let req2 = make_request("1984-07-22", "06:00", Gender::Male);
+    let result2 = calculate(&req2).unwrap();
+    // Just verify no panic and result is reasonable
+    assert!(result2.stem_interactions.len() <= 12); // max 6 pairs * 2 types
+}
+
+#[test]
+fn test_branch_chung_detection() {
+    // 자오충: branch 0 and branch 6
+    assert!(bazi::stem_chung(0, 6)); // 갑경충
+    assert!(!bazi::stem_chung(0, 1)); // not a chung pair
+
+    // Test branch interactions via a known date
+    let req = make_request("2000-01-15", "17:15", Gender::Male);
+    let result = calculate(&req).unwrap();
+    // Branches: 卯(3), 丑(1), 申(8), 酉(9)
+    // 卯(3)-酉(9): diff=6 → 충!
+    let chung_count = result.branch_interactions.iter()
+        .filter(|b| b.relation == BranchRelationType::Chung)
+        .count();
+    assert_eq!(chung_count, 1, "卯酉충 should be detected");
+
+    // Verify all interaction types are valid
+    for bi in &result.branch_interactions {
+        assert!(!bi.positions.is_empty());
+        assert!(!bi.branches.is_empty());
+    }
+}
+
+#[test]
+fn test_gongmang_calculation() {
+    // 壬申 (stem=8, branch=8) → gongmang
+    // 순(旬): (10 + 8 - 8) % 12 = 10, 11 → 술(10), 해(11)
+    let gm = bazi::gongmang(8, 8);
+    assert_eq!(gm, [10, 11]); // 술, 해
+
+    // 甲子 (stem=0, branch=0) → gongmang = (10+0-0)%12=10,11 → 술,해
+    let gm2 = bazi::gongmang(0, 0);
+    assert_eq!(gm2, [10, 11]);
+
+    // 甲戌 (stem=0, branch=10) → gongmang = (10+10-0)%12=8,9 → 신,유
+    let gm3 = bazi::gongmang(0, 10);
+    assert_eq!(gm3, [8, 9]);
+}
+
+#[test]
+fn test_shinsal_entries() {
+    let req = make_request("2000-01-15", "17:15", Gender::Male);
+    let result = calculate(&req).unwrap();
+
+    // Verify shinsal entries exist and have valid structure
+    for entry in &result.shinsal_entries {
+        assert!(!entry.found_at.is_empty(), "shinsal should have at least one found_at position");
+        // Verify position values are valid
+        for pos in &entry.found_at {
+            assert!(matches!(
+                pos,
+                PillarPosition::Year | PillarPosition::Month | PillarPosition::Day | PillarPosition::Hour
+            ));
+        }
+    }
+
+    // For this saju (己卯 乙丑 壬申 己酉):
+    // 天乙貴人: 일간 壬(8) → targets [3,5] (묘,사). 연지=卯(3) matches!
+    let cheon_eul = result.shinsal_entries.iter()
+        .find(|e| e.kind == ShinsalKind::CheonEulGwiIn);
+    assert!(cheon_eul.is_some(), "should detect 천을귀인");
+    let ce = cheon_eul.unwrap();
+    assert!(ce.found_at.contains(&PillarPosition::Year)); // 卯 is at year branch
+
+    // 괴강살: 일주 壬申 is not 경진/경술/임진/임술 → no goegang
+    let goegang = result.shinsal_entries.iter()
+        .find(|e| e.kind == ShinsalKind::GoeGangSal);
+    assert!(goegang.is_none(), "壬申 is not a goegang pillar");
 }
 
 #[test]

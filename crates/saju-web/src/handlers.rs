@@ -1,18 +1,19 @@
 use axum::extract::Form;
 use axum::response::IntoResponse;
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate, Utc};
 use serde::Deserialize;
 
 use saju_lib::bazi;
+use saju_lib::luck;
 use saju_lib::i18n::{I18n, Lang, PillarKind};
 use saju_lib::location;
 use saju_lib::service::{CalendarType, SajuRequest, SajuResult};
-use saju_lib::types::{Element, Gender};
+use saju_lib::types::{BranchRelationType, Element, Gender, StemRelationType};
 use saju_lib::astro;
 
 use crate::templates::{
-    DaewonView, ElementView, ErrorTemplate, HiddenStemRow, IndexTemplate, LocationItem,
-    MonthlyLuckItemView, PillarView, ResultTemplate, TenGodsHiddenRow, YearlyLuckView,
+    DaewonView, ElementView, ErrorTemplate, IndexTemplate, InteractionView, LocationItem,
+    MonthlyLuckItemView, PillarColumnView, ResultTemplate, ShinsalView, YearlyLuckView,
 };
 
 #[derive(Deserialize)]
@@ -113,18 +114,28 @@ fn element_css(element: Element) -> &'static str {
 }
 
 fn build_result_template(result: &SajuResult, i18n: &I18n) -> ResultTemplate {
-    let pillars = build_pillars(result, i18n);
-    let hidden_stems = build_hidden_stems(result, i18n);
-    let ten_gods_stem_line = build_ten_gods_stem_line(result, i18n);
-    let ten_gods_branch_line = build_ten_gods_branch_line(result, i18n);
-    let ten_gods_hidden = build_ten_gods_hidden(result, i18n);
-    let twelve_stages_line = build_twelve_stages(result, i18n);
-    let twelve_shinsal_line = build_twelve_shinsal(result, i18n);
+    let now_utc = Utc::now();
+    let now_jd = astro::jd_from_datetime(now_utc);
+    let now_local = result.tz_spec.to_local(now_utc);
+
+    // Compute current age in months for daewon highlighting
+    let solar_birth = if result.calendar_is_lunar {
+        result.converted_solar
+    } else {
+        NaiveDate::parse_from_str(&result.input_date, "%Y-%m-%d").ok()
+    };
+    let age_months = solar_birth.map(|bd| {
+        (now_local.year() - bd.year()) * 12 + (now_local.month() as i32 - bd.month() as i32)
+    });
+
+    let pillar_columns = build_pillar_columns(result, i18n);
+    let relations = build_relations(result, i18n);
+    let shinsal_extra = build_shinsal_extra(result, i18n);
     let strength = build_strength(result, i18n);
     let elements = build_elements(result, i18n);
-    let daewon = build_daewon(result, i18n);
-    let yearly_luck = build_yearly_luck(result, i18n);
-    let monthly_luck = build_monthly_luck(result, i18n);
+    let daewon = build_daewon(result, i18n, age_months);
+    let yearly_luck = build_yearly_luck(result, i18n, now_jd);
+    let monthly_luck = build_monthly_luck(result, i18n, now_jd);
 
     // Header
     let title = i18n.title().to_string();
@@ -158,189 +169,86 @@ fn build_result_template(result: &SajuResult, i18n: &I18n) -> ResultTemplate {
     });
     let gender_line = format!("{}: {}", i18n.gender_label(), i18n.gender_value(result.gender));
 
-    let strength_heading = i18n.strength_heading().to_string();
-    let elements_heading = i18n.elements_heading().to_string();
-    let pillars_heading = i18n.pillars_heading().to_string();
-    let hidden_stems_heading = i18n.hidden_stems_heading().to_string();
-    let ten_gods_heading = i18n.ten_gods_heading().to_string();
-    let twelve_stages_heading = i18n.twelve_stages_heading().to_string();
-    let twelve_shinsal_heading = i18n.twelve_shinsal_heading().to_string();
-
     ResultTemplate {
         title,
         input_line,
         converted_solar_line,
         converted_lunar_line,
         gender_line,
-        pillars_heading,
-        pillars,
-        hidden_stems_heading,
-        hidden_stems,
-        ten_gods_heading,
-        ten_gods_stem_line,
-        ten_gods_branch_line,
-        ten_gods_hidden,
-        twelve_stages_heading,
-        twelve_stages_line,
-        twelve_shinsal_heading,
-        twelve_shinsal_line,
-        strength_heading,
+        pillars_table_heading: i18n.pillars_heading().to_string(),
+        pillar_columns,
+        relations_heading: i18n.relations_heading().to_string(),
+        relations,
+        shinsal_extra_heading: i18n.shinsal_extra_heading().to_string(),
+        shinsal_extra,
+        strength_heading: i18n.strength_heading().to_string(),
         strength,
-        elements_heading,
+        elements_heading: i18n.elements_heading().to_string(),
         elements,
         daewon_heading: daewon.0,
         daewon_items: daewon.1,
         yearly_luck_heading: i18n.yearly_luck_heading().to_string(),
         yearly_luck_items: yearly_luck,
         monthly_luck_heading: monthly_luck.0,
-        monthly_luck_year_line: monthly_luck.1,
-        monthly_luck_items: monthly_luck.2,
+        monthly_luck_items: monthly_luck.1,
     }
 }
 
-fn build_pillars(result: &SajuResult, i18n: &I18n) -> Vec<PillarView> {
+fn build_pillar_columns(result: &SajuResult, i18n: &I18n) -> Vec<PillarColumnView> {
+    let ds = result.day_pillar.stem;
+    let yb = result.year_pillar.branch;
     let kinds = [PillarKind::Hour, PillarKind::Day, PillarKind::Month, PillarKind::Year];
-    let ps = [result.hour_pillar, result.day_pillar, result.month_pillar, result.year_pillar];
-    kinds
-        .iter()
-        .zip(ps.iter())
-        .map(|(kind, pillar)| {
-            let stem_word = if matches!(kind, PillarKind::Day) {
-                i18n.day_stem_word().to_string()
-            } else {
-                i18n.stem_word().to_string()
-            };
-            PillarView {
-                kind: i18n.pillar_kind_label(*kind).to_string(),
-                label: i18n.pillar_label(*pillar),
-                stem_word,
-                stem_element: i18n.element_label(bazi::stem_element(pillar.stem)).to_string(),
-                stem_polarity: i18n.polarity_label(bazi::stem_polarity(pillar.stem)).to_string(),
-                branch_word: i18n.branch_word().to_string(),
-                branch_element: i18n.element_label(bazi::branch_element(pillar.branch)).to_string(),
-                branch_polarity: i18n.polarity_label(bazi::branch_polarity(pillar.branch)).to_string(),
-                stem_css: element_css(bazi::stem_element(pillar.stem)).to_string(),
-                branch_css: element_css(bazi::branch_element(pillar.branch)).to_string(),
-            }
-        })
-        .collect()
-}
+    let pillars = [result.hour_pillar, result.day_pillar, result.month_pillar, result.year_pillar];
 
-fn build_hidden_stems(result: &SajuResult, i18n: &I18n) -> Vec<HiddenStemRow> {
-    let kinds = [PillarKind::Year, PillarKind::Month, PillarKind::Day, PillarKind::Hour];
-    let branches = [
-        result.year_pillar.branch,
-        result.month_pillar.branch,
-        result.day_pillar.branch,
-        result.hour_pillar.branch,
-    ];
     kinds
         .iter()
-        .zip(branches.iter())
-        .map(|(kind, &branch)| {
-            let stems = bazi::hidden_stems(branch)
+        .zip(pillars.iter())
+        .map(|(kind, pillar)| {
+            let stem_el = bazi::stem_element(pillar.stem);
+            let stem_pol = bazi::stem_polarity(pillar.stem);
+            let branch_el = bazi::branch_element(pillar.branch);
+            let branch_pol = bazi::branch_polarity(pillar.branch);
+
+            let stem_sub = format!(
+                "{}{}",
+                if stem_pol { "+" } else { "-" },
+                i18n.element_short_label(stem_el)
+            );
+            let branch_sub = format!(
+                "{}{}",
+                if branch_pol { "+" } else { "-" },
+                i18n.element_short_label(branch_el)
+            );
+
+            let hidden = bazi::hidden_stems(pillar.branch)
                 .iter()
                 .map(|&s| i18n.stem_label(s))
                 .collect::<Vec<_>>()
                 .join(", ");
-            HiddenStemRow {
-                kind: i18n.branch_kind_label(*kind).to_string(),
-                stems,
+
+            PillarColumnView {
+                kind: i18n.pillar_kind_label(*kind).to_string(),
+                stem_god: i18n.ten_god_label(bazi::ten_god(ds, pillar.stem)).to_string(),
+                stem_label: i18n.stem_label(pillar.stem),
+                stem_sub,
+                stem_css: element_css(stem_el).to_string(),
+                branch_god: i18n
+                    .ten_god_label(bazi::ten_god_branch(ds, pillar.branch))
+                    .to_string(),
+                branch_label: i18n.branch_label(pillar.branch),
+                branch_sub,
+                branch_css: element_css(branch_el).to_string(),
+                hidden_stems: hidden,
+                stage: i18n
+                    .stage_label(bazi::twelve_stage_index(ds, pillar.branch))
+                    .to_string(),
+                shinsal: i18n
+                    .shinsal_label(bazi::twelve_shinsal_index(yb, pillar.branch))
+                    .to_string(),
+                is_day: matches!(kind, PillarKind::Day),
             }
         })
         .collect()
-}
-
-fn build_ten_gods_stem_line(result: &SajuResult, i18n: &I18n) -> String {
-    let ds = result.day_pillar.stem;
-    format!(
-        "{} {} / {} {} / {} {} / {} {}",
-        i18n.stem_kind_label(PillarKind::Year),
-        i18n.ten_god_label(bazi::ten_god(ds, result.year_pillar.stem)),
-        i18n.stem_kind_label(PillarKind::Month),
-        i18n.ten_god_label(bazi::ten_god(ds, result.month_pillar.stem)),
-        i18n.stem_kind_label(PillarKind::Day),
-        i18n.ten_god_label(bazi::ten_god(ds, result.day_pillar.stem)),
-        i18n.stem_kind_label(PillarKind::Hour),
-        i18n.ten_god_label(bazi::ten_god(ds, result.hour_pillar.stem))
-    )
-}
-
-fn build_ten_gods_branch_line(result: &SajuResult, i18n: &I18n) -> String {
-    let ds = result.day_pillar.stem;
-    format!(
-        "{} {} / {} {} / {} {} / {} {}",
-        i18n.branch_kind_label(PillarKind::Year),
-        i18n.ten_god_label(bazi::ten_god_branch(ds, result.year_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Month),
-        i18n.ten_god_label(bazi::ten_god_branch(ds, result.month_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Day),
-        i18n.ten_god_label(bazi::ten_god_branch(ds, result.day_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Hour),
-        i18n.ten_god_label(bazi::ten_god_branch(ds, result.hour_pillar.branch))
-    )
-}
-
-fn build_ten_gods_hidden(result: &SajuResult, i18n: &I18n) -> Vec<TenGodsHiddenRow> {
-    let ds = result.day_pillar.stem;
-    let kinds = [PillarKind::Year, PillarKind::Month, PillarKind::Day, PillarKind::Hour];
-    let branches = [
-        result.year_pillar.branch,
-        result.month_pillar.branch,
-        result.day_pillar.branch,
-        result.hour_pillar.branch,
-    ];
-    kinds
-        .iter()
-        .zip(branches.iter())
-        .map(|(kind, &branch)| {
-            let stems = bazi::hidden_stems(branch)
-                .iter()
-                .map(|&s| {
-                    format!(
-                        "{} {}",
-                        i18n.stem_label(s),
-                        i18n.ten_god_label(bazi::ten_god(ds, s))
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            TenGodsHiddenRow {
-                kind: i18n.branches_hidden_label(*kind),
-                stems,
-            }
-        })
-        .collect()
-}
-
-fn build_twelve_stages(result: &SajuResult, i18n: &I18n) -> String {
-    let ds = result.day_pillar.stem;
-    format!(
-        "{}: {} / {}: {} / {}: {} / {}: {}",
-        i18n.branch_kind_label(PillarKind::Year),
-        i18n.stage_label(bazi::twelve_stage_index(ds, result.year_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Month),
-        i18n.stage_label(bazi::twelve_stage_index(ds, result.month_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Day),
-        i18n.stage_label(bazi::twelve_stage_index(ds, result.day_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Hour),
-        i18n.stage_label(bazi::twelve_stage_index(ds, result.hour_pillar.branch))
-    )
-}
-
-fn build_twelve_shinsal(result: &SajuResult, i18n: &I18n) -> String {
-    let yb = result.year_pillar.branch;
-    format!(
-        "{}: {} / {}: {} / {}: {} / {}: {}",
-        i18n.branch_kind_label(PillarKind::Year),
-        i18n.shinsal_label(bazi::twelve_shinsal_index(yb, result.year_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Month),
-        i18n.shinsal_label(bazi::twelve_shinsal_index(yb, result.month_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Day),
-        i18n.shinsal_label(bazi::twelve_shinsal_index(yb, result.day_pillar.branch)),
-        i18n.branch_kind_label(PillarKind::Hour),
-        i18n.shinsal_label(bazi::twelve_shinsal_index(yb, result.hour_pillar.branch))
-    )
 }
 
 fn build_strength(result: &SajuResult, i18n: &I18n) -> Vec<String> {
@@ -430,7 +338,23 @@ fn build_elements(result: &SajuResult, i18n: &I18n) -> Vec<ElementView> {
         .collect()
 }
 
-fn build_daewon(result: &SajuResult, i18n: &I18n) -> (String, Vec<DaewonView>) {
+fn luck_stem_sub(i18n: &I18n, stem: usize) -> String {
+    let pol = bazi::stem_polarity(stem);
+    let el = bazi::stem_element(stem);
+    format!("{}{}", if pol { "+" } else { "-" }, i18n.element_short_label(el))
+}
+
+fn luck_branch_sub(i18n: &I18n, branch: usize) -> String {
+    let pol = bazi::branch_polarity(branch);
+    let el = bazi::branch_element(branch);
+    format!("{}{}", if pol { "+" } else { "-" }, i18n.element_short_label(el))
+}
+
+fn build_daewon(
+    result: &SajuResult,
+    i18n: &I18n,
+    age_months: Option<i32>,
+) -> (String, Vec<DaewonView>) {
     let heading = format!(
         "{} ({} , {} {})",
         i18n.daewon_heading(),
@@ -443,89 +367,217 @@ fn build_daewon(result: &SajuResult, i18n: &I18n) -> (String, Vec<DaewonView>) {
         .daewon_items
         .iter()
         .map(|item| {
-            let stem_el = bazi::stem_element(item.pillar.stem);
+            let p = item.pillar;
+            let is_current = age_months
+                .map(|am| am >= item.start_months && am < item.start_months + 120)
+                .unwrap_or(false);
             DaewonView {
                 age: i18n.format_age(item.start_months, true),
-                pillar: i18n.pillar_label(item.pillar),
-                stem_god: i18n
-                    .ten_god_label(bazi::ten_god(ds, item.pillar.stem))
-                    .to_string(),
+                stem_label: i18n.stem_label(p.stem),
+                stem_sub: luck_stem_sub(i18n, p.stem),
+                stem_css: element_css(bazi::stem_element(p.stem)).to_string(),
+                stem_god: i18n.ten_god_label(bazi::ten_god(ds, p.stem)).to_string(),
+                branch_label: i18n.branch_label(p.branch),
+                branch_sub: luck_branch_sub(i18n, p.branch),
+                branch_css: element_css(bazi::branch_element(p.branch)).to_string(),
                 branch_god: i18n
-                    .ten_god_label(bazi::ten_god_branch(ds, item.pillar.branch))
+                    .ten_god_label(bazi::ten_god_branch(ds, p.branch))
                     .to_string(),
-                css: element_css(stem_el).to_string(),
+                stage: i18n.stage_label(bazi::twelve_stage_index(ds, p.branch)).to_string(),
+                is_current,
             }
         })
         .collect();
     (heading, items)
 }
 
-fn build_yearly_luck(result: &SajuResult, i18n: &I18n) -> Vec<YearlyLuckView> {
+fn build_yearly_luck(result: &SajuResult, i18n: &I18n, now_jd: f64) -> Vec<YearlyLuckView> {
     let ds = result.day_pillar.stem;
     result
         .yearly_luck
         .iter()
         .map(|y| {
-            let start = result.tz_spec.to_local(astro::datetime_from_jd(y.start_jd));
-            let end = result.tz_spec.to_local(astro::datetime_from_jd(y.end_jd));
-            let stem_el = bazi::stem_element(y.pillar.stem);
+            let p = y.pillar;
+            let is_current = now_jd >= y.start_jd && now_jd < y.end_jd;
             YearlyLuckView {
                 label: i18n.format_year_label(y.year),
-                period: format!(
-                    "{} ~ {}",
-                    start.format("%Y-%m-%d %H:%M"),
-                    end.format("%Y-%m-%d %H:%M")
-                ),
-                pillar: i18n.pillar_label(y.pillar),
-                stem_god: i18n.ten_god_label(bazi::ten_god(ds, y.pillar.stem)).to_string(),
+                stem_label: i18n.stem_label(p.stem),
+                stem_sub: luck_stem_sub(i18n, p.stem),
+                stem_css: element_css(bazi::stem_element(p.stem)).to_string(),
+                stem_god: i18n.ten_god_label(bazi::ten_god(ds, p.stem)).to_string(),
+                branch_label: i18n.branch_label(p.branch),
+                branch_sub: luck_branch_sub(i18n, p.branch),
+                branch_css: element_css(bazi::branch_element(p.branch)).to_string(),
                 branch_god: i18n
-                    .ten_god_label(bazi::ten_god_branch(ds, y.pillar.branch))
+                    .ten_god_label(bazi::ten_god_branch(ds, p.branch))
                     .to_string(),
-                css: element_css(stem_el).to_string(),
+                stage: i18n.stage_label(bazi::twelve_stage_index(ds, p.branch)).to_string(),
+                is_current,
             }
         })
         .collect()
 }
 
+fn interaction_css(rel_type: &str) -> String {
+    format!("interaction-{}", rel_type)
+}
+
+fn build_relations(result: &SajuResult, i18n: &I18n) -> Vec<InteractionView> {
+    let mut views = Vec::new();
+
+    for si in &result.stem_interactions {
+        let positions_label = si
+            .positions
+            .iter()
+            .map(|p| i18n.position_label(*p))
+            .collect::<Vec<_>>()
+            .join("-");
+        let detail = if let Some(el) = si.result_element {
+            format!(
+                "{}-{} → {}",
+                i18n.stem_label(si.stems[0]),
+                i18n.stem_label(si.stems[1]),
+                i18n.element_label(el)
+            )
+        } else {
+            format!(
+                "{}-{}",
+                i18n.stem_label(si.stems[0]),
+                i18n.stem_label(si.stems[1])
+            )
+        };
+        let css = match si.relation {
+            StemRelationType::Hap => interaction_css("hap"),
+            StemRelationType::Chung => interaction_css("chung"),
+        };
+        views.push(InteractionView {
+            relation_label: i18n.stem_relation_label(si.relation).to_string(),
+            positions_label,
+            detail,
+            css_class: css,
+        });
+    }
+
+    for bi in &result.branch_interactions {
+        let positions_label = bi
+            .positions
+            .iter()
+            .map(|p| i18n.position_label(*p))
+            .collect::<Vec<_>>()
+            .join("-");
+        let branches_str = bi
+            .branches
+            .iter()
+            .map(|&b| i18n.branch_label(b))
+            .collect::<Vec<_>>()
+            .join("-");
+        let detail = if let Some(el) = bi.result_element {
+            format!("{} → {}", branches_str, i18n.element_label(el))
+        } else {
+            branches_str
+        };
+        let css = match bi.relation {
+            BranchRelationType::YukHap => interaction_css("yukhap"),
+            BranchRelationType::Chung => interaction_css("chung"),
+            BranchRelationType::Hyung => interaction_css("hyung"),
+            BranchRelationType::Pa => interaction_css("pa"),
+            BranchRelationType::Hae => interaction_css("hae"),
+            BranchRelationType::BangHap => interaction_css("banghap"),
+            BranchRelationType::SamHap => interaction_css("samhap"),
+        };
+        views.push(InteractionView {
+            relation_label: i18n.branch_relation_label(bi.relation).to_string(),
+            positions_label,
+            detail,
+            css_class: css,
+        });
+    }
+
+    views
+}
+
+fn build_shinsal_extra(result: &SajuResult, i18n: &I18n) -> Vec<ShinsalView> {
+    result
+        .shinsal_entries
+        .iter()
+        .map(|entry| {
+            let found_at = entry
+                .found_at
+                .iter()
+                .map(|p| i18n.position_label(*p))
+                .collect::<Vec<_>>()
+                .join(", ");
+            ShinsalView {
+                name: i18n.shinsal_kind_label(entry.kind).to_string(),
+                found_at,
+                basis: i18n.basis_position_label(entry.basis),
+            }
+        })
+        .collect()
+}
+
+fn build_monthly_luck_item(
+    m: &saju_lib::luck::MonthLuck,
+    ds: usize,
+    i18n: &I18n,
+    now_jd: f64,
+) -> MonthlyLuckItemView {
+    let p = m.pillar;
+    let is_current = now_jd >= m.start_jd && now_jd < m.end_jd;
+    MonthlyLuckItemView {
+        label: i18n.month_label(m.branch),
+        stem_label: i18n.stem_label(p.stem),
+        stem_sub: luck_stem_sub(i18n, p.stem),
+        stem_css: element_css(bazi::stem_element(p.stem)).to_string(),
+        stem_god: i18n.ten_god_label(bazi::ten_god(ds, p.stem)).to_string(),
+        branch_label: i18n.branch_label(p.branch),
+        branch_sub: luck_branch_sub(i18n, p.branch),
+        branch_css: element_css(bazi::branch_element(p.branch)).to_string(),
+        branch_god: i18n
+            .ten_god_label(bazi::ten_god_branch(ds, p.branch))
+            .to_string(),
+        stage: i18n.stage_label(bazi::twelve_stage_index(ds, p.branch)).to_string(),
+        is_current,
+    }
+}
+
 fn build_monthly_luck(
     result: &SajuResult,
     i18n: &I18n,
-) -> (String, String, Vec<MonthlyLuckItemView>) {
+    now_jd: f64,
+) -> (String, Vec<MonthlyLuckItemView>) {
     let ds = result.day_pillar.stem;
     let ml = &result.monthly_luck;
     let heading = i18n.monthly_luck_heading(ml.year);
-    let year_line = format!(
-        "{}: {} | {}: {} {} / {} {}",
-        i18n.year_luck_label(),
-        i18n.pillar_label(ml.year_pillar),
-        i18n.ten_gods_label(),
-        i18n.stems_label(),
-        i18n.ten_god_label(bazi::ten_god(ds, ml.year_pillar.stem)),
-        i18n.branches_label(),
-        i18n.ten_god_label(bazi::ten_god_branch(ds, ml.year_pillar.branch))
-    );
-    let items = ml
+
+    // Find which month is current in this year's cycle
+    let current_idx = ml
         .months
         .iter()
-        .map(|m| {
-            let start = result.tz_spec.to_local(astro::datetime_from_jd(m.start_jd));
-            let end = result.tz_spec.to_local(astro::datetime_from_jd(m.end_jd));
-            let stem_el = bazi::stem_element(m.pillar.stem);
-            MonthlyLuckItemView {
-                label: i18n.month_label(m.branch),
-                period: format!(
-                    "{} ~ {}",
-                    start.format("%Y-%m-%d %H:%M"),
-                    end.format("%Y-%m-%d %H:%M")
-                ),
-                pillar: i18n.pillar_label(m.pillar),
-                stem_god: i18n.ten_god_label(bazi::ten_god(ds, m.pillar.stem)).to_string(),
-                branch_god: i18n
-                    .ten_god_label(bazi::ten_god_branch(ds, m.pillar.branch))
-                    .to_string(),
-                css: element_css(stem_el).to_string(),
+        .position(|m| now_jd >= m.start_jd && now_jd < m.end_jd);
+
+    // We want current month at ~1/3 position (index 4 in 12-item list).
+    // If current is at index < 4, prepend previous year's months to shift it right.
+    let prefix_count = match current_idx {
+        Some(idx) if idx < 4 => 4 - idx,
+        _ => 0,
+    };
+
+    let mut items: Vec<MonthlyLuckItemView> = Vec::new();
+
+    if prefix_count > 0 {
+        if let Ok(prev_ml) = luck::monthly_luck(ml.year - 1) {
+            let skip = prev_ml.months.len().saturating_sub(prefix_count);
+            for m in prev_ml.months.iter().skip(skip) {
+                items.push(build_monthly_luck_item(m, ds, i18n, now_jd));
             }
-        })
-        .collect();
-    (heading, year_line, items)
+        }
+    }
+
+    let remaining = 12 - items.len();
+    for m in ml.months.iter().take(remaining) {
+        items.push(build_monthly_luck_item(m, ds, i18n, now_jd));
+    }
+
+    (heading, items)
 }

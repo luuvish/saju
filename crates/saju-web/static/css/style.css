@@ -1,9 +1,9 @@
 :root {
-    --wood-bg: #e8f5e9; --wood-border: #4caf50; --wood-text: #2e7d32;
-    --fire-bg: #ffebee; --fire-border: #f44336; --fire-text: #c62828;
-    --earth-bg: #fff8e1; --earth-border: #ffc107; --earth-text: #f57f17;
-    --metal-bg: #f5f5f5; --metal-border: #9e9e9e; --metal-text: #424242;
-    --water-bg: #e3f2fd; --water-border: #2196f3; --water-text: #1565c0;
+    --wood-bg: #d7f0d7; --wood-border: #2e7d32; --wood-text: #1b5e20;
+    --fire-bg: #fddede; --fire-border: #d32f2f; --fire-text: #b71c1c;
+    --earth-bg: #fff3c4; --earth-border: #f9a825; --earth-text: #e65100;
+    --metal-bg: #f0f0f0; --metal-border: #bdbdbd; --metal-text: #424242;
+    --water-bg: #d6d6d6; --water-border: #424242; --water-text: #212121;
     --bg: #f8f9fa; --card-bg: #fff; --text: #212529; --text-muted: #6c757d;
     --border: #dee2e6; --primary: #4a6cf7; --primary-hover: #3b5de7;
 }
@@ -13,10 +13,10 @@
         --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-muted: #a0a0a0;
         --border: #333; --primary: #6c8cff; --primary-hover: #5a7af0;
         --wood-bg: #1b3a1b; --wood-border: #4caf50; --wood-text: #81c784;
-        --fire-bg: #3a1b1b; --fire-border: #f44336; --fire-text: #ef9a9a;
+        --fire-bg: #3a1b1b; --fire-border: #ef5350; --fire-text: #ef9a9a;
         --earth-bg: #3a3520; --earth-border: #ffc107; --earth-text: #fff176;
-        --metal-bg: #2a2a2a; --metal-border: #9e9e9e; --metal-text: #bdbdbd;
-        --water-bg: #1a2a3a; --water-border: #2196f3; --water-text: #90caf9;
+        --metal-bg: #3a3a3a; --metal-border: #e0e0e0; --metal-text: #f5f5f5;
+        --water-bg: #1a1a2a; --water-border: #757575; --water-text: #bdbdbd;
     }
 }
 
@@ -86,16 +86,23 @@ form {
 .header-info li { padding: 0.2rem 0; font-size: 0.95rem; }
 .header-info li::before { content: "• "; color: var(--text-muted); }
 
-/* Pillars grid */
-.pillars-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
-.pillar-card {
-    border-radius: 10px; padding: 0.75rem; text-align: center;
-    border: 2px solid var(--border); transition: transform 0.15s;
+/* Pillar Table */
+.pillar-table { display: grid; grid-template-columns: auto repeat(4, 1fr); gap: 0; }
+.pt-row { display: contents; }
+.pt-label {
+    font-size: 0.75rem; color: var(--text-muted); font-weight: 600;
+    display: flex; align-items: center; padding: 0.25rem 0.5rem;
 }
-.pillar-card:hover { transform: translateY(-2px); }
-.pillar-kind { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 500; }
-.pillar-stem { font-size: 1.1rem; font-weight: 700; padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; }
-.pillar-detail { font-size: 0.8rem; padding: 0.15rem 0; }
+.pt-cell { text-align: center; padding: 0.25rem; }
+.pt-header .pt-cell {
+    font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
+    padding-bottom: 0.5rem;
+}
+.pt-card { font-size: 1rem; font-weight: 700; padding: 0.5rem; border-radius: 10px; }
+.pt-card.pt-day { box-shadow: 0 0 0 2px var(--primary); }
+.pt-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+.pt-god { font-size: 0.8rem; color: var(--text-muted); padding: 0.15rem; }
+.pt-text { font-size: 0.8rem; padding: 0.15rem; }
 
 /* Element colors */
 .element-wood { background: var(--wood-bg); border-color: var(--wood-border); color: var(--wood-text); }
@@ -128,18 +135,68 @@ form {
 
 /* Luck timeline */
 .luck-timeline {
-    display: flex; gap: 0.75rem; overflow-x: auto; padding: 0.5rem 0;
+    display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.5rem 0;
     scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
 }
 .luck-card {
-    min-width: 140px; flex-shrink: 0; border-radius: 10px;
-    padding: 0.75rem; text-align: center; border: 2px solid var(--border);
+    min-width: 90px; flex-shrink: 0; border-radius: 10px;
+    padding: 0.4rem; text-align: center; border: 1px solid var(--border);
     scroll-snap-align: start;
 }
-.luck-age { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; }
-.luck-pillar { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
-.luck-period { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; white-space: nowrap; }
-.luck-gods { font-size: 0.75rem; }
+.luck-card .pt-card { font-size: 0.85rem; padding: 0.35rem 0.25rem; margin: 0 auto; }
+.luck-card .pt-sub { font-size: 0.7rem; margin-top: 0.1rem; margin-bottom: 0.15rem; }
+.luck-age { font-size: 0.75rem; font-weight: 600; margin-bottom: 0.2rem; }
+.luck-god { font-size: 0.7rem; color: var(--text-muted); padding: 0.1rem 0; }
+.luck-stage { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.1rem; }
+.luck-period { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; white-space: nowrap; }
+
+/* Compact luck cards (daewon/yearly/monthly) */
+.luck-compact {
+    gap: 0.3rem; overflow-x: visible; flex-wrap: nowrap;
+}
+.luck-compact .luck-card {
+    min-width: 0; flex: 1 1 0; padding: 0.3rem 0.15rem;
+}
+.luck-compact .luck-card .pt-card { font-size: 0.8rem; padding: 0.3rem 0.1rem; }
+.luck-compact .luck-card .pt-sub { font-size: 0.65rem; }
+.luck-compact .luck-age { font-size: 0.7rem; margin-bottom: 0.15rem; }
+.luck-compact .luck-god { font-size: 0.6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.luck-compact .luck-stage { font-size: 0.55rem; }
+.luck-compact .luck-period { font-size: 0.55rem; line-height: 1.3; }
+.luck-card.luck-current { box-shadow: 0 0 0 2px var(--primary); }
+
+
+/* Relations */
+.relations-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.relation-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.4rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+.relation-type { font-weight: 600; min-width: 7rem; }
+.relation-positions {
+    background: var(--bg); padding: 0.15rem 0.5rem;
+    border-radius: 4px; font-size: 0.8rem; font-weight: 600;
+}
+.interaction-hap, .interaction-yukhap, .interaction-banghap, .interaction-samhap {
+    border-left: 3px solid var(--wood-border);
+}
+.interaction-chung, .interaction-hyung {
+    border-left: 3px solid var(--fire-border);
+}
+.interaction-pa { border-left: 3px solid var(--earth-border); }
+.interaction-hae { border-left: 3px solid var(--metal-border); }
+
+/* Shinsal */
+.shinsal-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem;
+}
+.shinsal-item {
+    padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);
+}
+.shinsal-name { font-weight: 600; font-size: 0.9rem; }
+.shinsal-at { font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem; }
+.shinsal-basis { font-size: 0.75rem; color: var(--text-muted); margin-left: 0.5rem; }
 
 /* Error */
 .error-message {
@@ -151,7 +208,8 @@ form {
 /* Responsive */
 @media (max-width: 640px) {
     .container { padding: 1rem 0.75rem; }
-    .pillars-grid { grid-template-columns: repeat(2, 1fr); }
+    .pillar-table { grid-template-columns: repeat(4, 1fr); }
+    .pt-label { display: none; }
     .elements-section { grid-template-columns: 1fr; }
     .chart-container { max-width: 180px; margin: 0 auto; }
     .form-grid { grid-template-columns: 1fr 1fr; }
@@ -159,6 +217,5 @@ form {
 }
 
 @media (max-width: 400px) {
-    .pillars-grid { grid-template-columns: 1fr; }
     .form-grid { grid-template-columns: 1fr; }
 }
