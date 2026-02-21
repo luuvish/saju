@@ -6,6 +6,7 @@ import { location as loc } from 'saju-lib';
 const STORAGE_KEY = 'saju-form-state';
 
 interface SavedState {
+  name?: string;
   date?: string;
   time?: string;
   gender?: string;
@@ -13,7 +14,6 @@ interface SavedState {
   leapMonth?: boolean;
   tz?: string;
   locationVal?: string;
-  lang?: string;
 }
 
 function loadSavedState(): SavedState | null {
@@ -33,6 +33,7 @@ interface Props {
 
 export default function SajuForm({ onSubmit, loading }: Props) {
   const saved = useRef(loadSavedState());
+  const [name, setName] = useState(saved.current?.name ?? '');
   const [date, setDate] = useState(saved.current?.date ?? '2000-01-15');
   const [time, setTime] = useState(saved.current?.time ?? '12:00');
   const [gender, setGender] = useState(saved.current?.gender ?? 'Male');
@@ -40,14 +41,13 @@ export default function SajuForm({ onSubmit, loading }: Props) {
   const [leapMonth, setLeapMonth] = useState(saved.current?.leapMonth ?? false);
   const [tz, setTz] = useState(saved.current?.tz ?? 'Asia/Seoul');
   const [locationVal, setLocationVal] = useState(saved.current?.locationVal ?? 'seoul');
-  const [lang, setLang] = useState(saved.current?.lang ?? 'ko');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const locations = loc.locationList();
 
   function buildPayload() {
     const useLmt = !!locationVal;
     return {
-      date, time, gender, calendar,
+      name, date, time, gender, calendar,
       leapMonth: calendar === 'Lunar' ? leapMonth : false,
       tz,
       useLmt,
@@ -57,7 +57,7 @@ export default function SajuForm({ onSubmit, loading }: Props) {
       monthYear: null,
       yearStart: null,
       yearCount: 10,
-      lang,
+      lang: 'ko',
     };
   }
 
@@ -73,34 +73,22 @@ export default function SajuForm({ onSubmit, loading }: Props) {
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
-      // Always submit on mount so restored values are calculated
       onSubmit(buildPayload());
       return;
     }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ date, time, gender, calendar, leapMonth, tz, locationVal, lang }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, date, time, gender, calendar, leapMonth, tz, locationVal }));
     } catch { /* quota exceeded or private browsing — ignore */ }
     triggerUpdate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, time, gender, calendar, leapMonth, tz, locationVal, lang]);
+  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal]);
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(buildPayload()); }}>
-      <div className="form-grid">
+      <div className="form-grid form-primary">
         <div className="form-group">
-          <label htmlFor="date">날짜</label>
-          <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </div>
-        <div className="form-group">
-          <label htmlFor="time">시간</label>
-          <input type="time" id="time" value={time} onChange={(e) => setTime(e.target.value)} required />
-        </div>
-        <div className="form-group">
-          <label htmlFor="calendar">역법(曆法)</label>
-          <select id="calendar" value={calendar} onChange={(e) => setCalendar(e.target.value)}>
-            <option value="Solar">양력(陽曆)</option>
-            <option value="Lunar">음력(陰曆)</option>
-          </select>
+          <label htmlFor="name">이름</label>
+          <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="이름을 입력하세요" />
         </div>
         <div className="form-group">
           <label htmlFor="gender">성별</label>
@@ -129,18 +117,29 @@ export default function SajuForm({ onSubmit, loading }: Props) {
             ))}
           </select>
         </div>
+      </div>
+      <hr className="form-divider" />
+      <div className="form-grid form-saju">
         <div className="form-group">
-          <label htmlFor="lang">언어</label>
-          <select id="lang" value={lang} onChange={(e) => setLang(e.target.value)}>
-            <option value="ko">한국어</option>
-            <option value="en">영어</option>
+          <label htmlFor="calendar">역법(曆法)</label>
+          <select id="calendar" value={calendar} onChange={(e) => setCalendar(e.target.value)}>
+            <option value="Solar">양력(陽曆)</option>
+            <option value="Lunar">음력(陰曆)</option>
           </select>
         </div>
-        <div className="form-group checkbox-group">
+        <div className="form-group">
+          <label htmlFor="leapMonth">윤달(閏月)</label>
           <label className="checkbox-control">
-            <input type="checkbox" checked={leapMonth} onChange={(e) => setLeapMonth(e.target.checked)} />
-            윤달(閏月)
+            <input type="checkbox" id="leapMonth" checked={leapMonth} onChange={(e) => setLeapMonth(e.target.checked)} />
           </label>
+        </div>
+        <div className="form-group">
+          <label htmlFor="date">날짜</label>
+          <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label htmlFor="time">시간</label>
+          <input type="time" id="time" value={time} onChange={(e) => setTime(e.target.value)} required />
         </div>
       </div>
     </form>
