@@ -38,8 +38,27 @@ function loadSavedState(): SavedState | null {
   }
 }
 
+/** 폼에서 제출되는 데이터의 타입 */
+export interface SajuFormData {
+  name: string
+  date: string
+  time: string
+  gender: string
+  calendar: string
+  leapMonth: boolean
+  tz: string
+  useLmt: boolean
+  location: string | null
+  longitude: number | null
+  daewonCount: number
+  monthYear: number | null
+  yearStart: number | null
+  yearCount: number
+  lang: string
+}
+
 interface Props {
-  onSubmit: (data: Record<string, unknown>) => void;
+  onSubmit: (data: SajuFormData) => void;
   loading: boolean;
 }
 

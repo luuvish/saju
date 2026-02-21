@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { useMemo } from 'react';
 import type { SajuResult } from 'saju-lib';
 import { I18n } from 'saju-lib';
 import type { Lang } from 'saju-lib';
@@ -22,7 +23,7 @@ import MonthlyLuck from './MonthlyLuck';
 interface Props { result: SajuResult; lang: Lang; name?: string }
 
 export default function ResultDashboard({ result, lang, name }: Props) {
-  const i18n = new I18n(lang);
+  const i18n = useMemo(() => new I18n(lang), [lang]);
 
   const calLabel = i18n.calendarLabel(result.calendarIsLunar, result.leapMonth);
   const lmt = result.lmtInfo;

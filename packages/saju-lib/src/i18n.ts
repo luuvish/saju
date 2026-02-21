@@ -16,7 +16,6 @@ import type {
   ShinsalKind,
   StemRelationType,
   StrengthClass,
-  StrengthVerdict,
   TenGod,
   TermDef,
 } from './types.js';
@@ -95,6 +94,46 @@ const BRANCH_RELATION_LABELS: Record<Lang, Record<BranchRelationType, string>> =
   En: { YukHap: 'Six Combine (六合)', Chung: 'Clash (沖)', Hyung: 'Punishment (刑)', Pa: 'Break (破)', Hae: 'Harm (害)', BangHap: 'Directional (方合)', SamHap: 'Triple (三合)' },
 };
 
+const PILLAR_KIND_LABELS: Record<Lang, Record<PillarKind, string>> = {
+  Ko: { Year: '연주', Month: '월주', Day: '일주', Hour: '시주' },
+  En: { Year: 'Year Pillar', Month: 'Month Pillar', Day: 'Day Pillar', Hour: 'Hour Pillar' },
+};
+
+const STEM_KIND_LABELS: Record<Lang, Record<PillarKind, string>> = {
+  Ko: { Year: '연간', Month: '월간', Day: '일간', Hour: '시간' },
+  En: { Year: 'Year stem', Month: 'Month stem', Day: 'Day stem', Hour: 'Hour stem' },
+};
+
+const BRANCH_KIND_LABELS: Record<Lang, Record<PillarKind, string>> = {
+  Ko: { Year: '연지', Month: '월지', Day: '일지', Hour: '시지' },
+  En: { Year: 'Year branch', Month: 'Month branch', Day: 'Day branch', Hour: 'Hour branch' },
+};
+
+const DIRECTION_LABELS: Record<Lang, Record<Direction, string>> = {
+  Ko: { Forward: '순행', Backward: '역행' },
+  En: { Forward: 'Forward', Backward: 'Backward' },
+};
+
+const STRENGTH_CLASS_LABELS: Record<Lang, Record<StrengthClass, string>> = {
+  Ko: { Strong: '강', Weak: '약', Neutral: '중' },
+  En: { Strong: 'Strong', Weak: 'Weak', Neutral: 'Neutral' },
+};
+
+const STRENGTH_VERDICT_LABELS: Record<Lang, Record<StrengthClass, string>> = {
+  Ko: { Strong: '신강', Weak: '신약', Neutral: '중화' },
+  En: { Strong: 'Strong', Weak: 'Weak', Neutral: 'Balanced' },
+};
+
+const STEM_RELATION_LABELS: Record<Lang, Record<StemRelationType, string>> = {
+  Ko: { Hap: '천간합(天干合)', Chung: '천간충(天干沖)' },
+  En: { Hap: 'Stem Combine (天干合)', Chung: 'Stem Clash (天干沖)' },
+};
+
+const YONGSHIN_METHOD_LABELS: Record<Lang, Record<string, string>> = {
+  Ko: { suppress: '억부법(抑扶法) — 신강: 억제 필요', support: '억부법(抑扶法) — 신약: 부조 필요' },
+  En: { suppress: 'Suppress method — Strong: needs restraint', support: 'Support method — Weak: needs aid' },
+};
+
 /**
  * 다국어 레이블 제공 클래스.
  * 사주 관련 모든 용어와 UI 텍스트를 Lang에 따라 반환한다.
@@ -137,29 +176,17 @@ export class I18n {
 
   /** 기둥 종류 레이블 (예: '연주', '월주') */
   pillarKindLabel(kind: PillarKind): string {
-    const map: Record<Lang, Record<PillarKind, string>> = {
-      Ko: { Year: '연주', Month: '월주', Day: '일주', Hour: '시주' },
-      En: { Year: 'Year Pillar', Month: 'Month Pillar', Day: 'Day Pillar', Hour: 'Hour Pillar' },
-    };
-    return map[this.lang][kind];
+    return PILLAR_KIND_LABELS[this.lang][kind];
   }
 
   /** 천간 위치 레이블 (예: '연간', '일간') */
   stemKindLabel(kind: PillarKind): string {
-    const map: Record<Lang, Record<PillarKind, string>> = {
-      Ko: { Year: '연간', Month: '월간', Day: '일간', Hour: '시간' },
-      En: { Year: 'Year stem', Month: 'Month stem', Day: 'Day stem', Hour: 'Hour stem' },
-    };
-    return map[this.lang][kind];
+    return STEM_KIND_LABELS[this.lang][kind];
   }
 
   /** 지지 위치 레이블 (예: '연지', '일지') */
   branchKindLabel(kind: PillarKind): string {
-    const map: Record<Lang, Record<PillarKind, string>> = {
-      Ko: { Year: '연지', Month: '월지', Day: '일지', Hour: '시지' },
-      En: { Year: 'Year branch', Month: 'Month branch', Day: 'Day branch', Hour: 'Hour branch' },
-    };
-    return map[this.lang][kind];
+    return BRANCH_KIND_LABELS[this.lang][kind];
   }
 
   // ── 공통 용어 ──
@@ -182,11 +209,7 @@ export class I18n {
 
   /** 대운 진행 방향 레이블 */
   directionLabel(direction: Direction): string {
-    const map: Record<Lang, Record<Direction, string>> = {
-      Ko: { Forward: '순행', Backward: '역행' },
-      En: { Forward: 'Forward', Backward: 'Backward' },
-    };
-    return map[this.lang][direction];
+    return DIRECTION_LABELS[this.lang][direction];
   }
 
   startLabel(): string { return this.lang === 'Ko' ? '시작' : 'start'; }
@@ -287,31 +310,25 @@ export class I18n {
 
   /** 12운성 레이블 (인덱스 0~11) */
   stageLabel(index: number): string {
+    if (index < 0 || index > 11) throw new RangeError(`stageLabel index out of range: ${index}`);
     return this.lang === 'Ko' ? TWELVE_STAGES_KO[index] : TWELVE_STAGES_EN[index];
   }
 
   /** 12신살 레이블 (인덱스 0~11) */
   shinsalLabel(index: number): string {
+    if (index < 0 || index > 11) throw new RangeError(`shinsalLabel index out of range: ${index}`);
     return this.lang === 'Ko' ? SHINSAL_NAMES_KO[index] : SHINSAL_NAMES_EN[index];
   }
 
   // ── 신강/신약 ──
 
   strengthClassLabel(cls: StrengthClass): string {
-    const map: Record<Lang, Record<StrengthClass, string>> = {
-      Ko: { Strong: '강', Weak: '약', Neutral: '중' },
-      En: { Strong: 'Strong', Weak: 'Weak', Neutral: 'Neutral' },
-    };
-    return map[this.lang][cls];
+    return STRENGTH_CLASS_LABELS[this.lang][cls];
   }
 
   /** 최종 강약 판정 레이블 (신강/신약/중화) */
-  strengthVerdictLabel(verdict: StrengthVerdict): string {
-    const map: Record<Lang, Record<StrengthVerdict, string>> = {
-      Ko: { Strong: '신강', Weak: '신약', Neutral: '중화' },
-      En: { Strong: 'Strong', Weak: 'Weak', Neutral: 'Balanced' },
-    };
-    return map[this.lang][verdict];
+  strengthVerdictLabel(verdict: StrengthClass): string {
+    return STRENGTH_VERDICT_LABELS[this.lang][verdict];
   }
 
   // ── 용신(用神) ──
@@ -322,11 +339,7 @@ export class I18n {
   gishinLabel(): string { return this.lang === 'Ko' ? '기신(忌神)' : 'Jealous God'; }
   gushinLabel(): string { return this.lang === 'Ko' ? '구신(仇神)' : 'Enemy God'; }
   yongshinMethodLabel(method: 'suppress' | 'support'): string {
-    const map: Record<Lang, Record<string, string>> = {
-      Ko: { suppress: '억부법(抑扶法) — 신강: 억제 필요', support: '억부법(抑扶法) — 신약: 부조 필요' },
-      En: { suppress: 'Suppress method — Strong: needs restraint', support: 'Support method — Weak: needs aid' },
-    };
-    return map[this.lang][method];
+    return YONGSHIN_METHOD_LABELS[this.lang][method];
   }
 
   // ── 신강/신약 상세 ──
@@ -373,11 +386,7 @@ export class I18n {
 
   /** 천간 관계 레이블 (천간합/천간충) */
   stemRelationLabel(rel: StemRelationType): string {
-    const map: Record<Lang, Record<StemRelationType, string>> = {
-      Ko: { Hap: '천간합(天干合)', Chung: '천간충(天干沖)' },
-      En: { Hap: 'Stem Combine (天干合)', Chung: 'Stem Clash (天干沖)' },
-    };
-    return map[this.lang][rel];
+    return STEM_RELATION_LABELS[this.lang][rel];
   }
 
   /** 지지 관계 레이블 (육합/충/형/파/해/방합/삼합) */

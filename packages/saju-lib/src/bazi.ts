@@ -118,13 +118,14 @@ export function yearPillar(year: number): [number, number] {
  * @param key 절기 키 (예: 'lichun', 'jingzhe')
  * @returns 월지 인덱스 (0~11) 또는 null (중기인 경우)
  */
+const MONTH_BRANCH_MAP: Record<string, number> = {
+  lichun: 2, jingzhe: 3, qingming: 4, lixia: 5,
+  mangzhong: 6, xiaoshu: 7, liqiu: 8, bailu: 9,
+  hanlu: 10, lidong: 11, daxue: 0, xiaohan: 1,
+};
+
 export function monthBranchFromTermKey(key: string): number | null {
-  const map: Record<string, number> = {
-    lichun: 2, jingzhe: 3, qingming: 4, lixia: 5,
-    mangzhong: 6, xiaoshu: 7, liqiu: 8, bailu: 9,
-    hanlu: 10, lidong: 11, daxue: 0, xiaohan: 1,
-  };
-  return map[key] ?? null;
+  return MONTH_BRANCH_MAP[key] ?? null;
 }
 
 /**

@@ -20,6 +20,7 @@ import {
   astro,
   bazi,
   luck,
+  strength as str,
   I18n,
   type Lang,
   type PillarKind,
@@ -245,9 +246,10 @@ function printTwelveShinsal(yearBranch: number, year: Pillar, month: Pillar, day
 
 /** 신강/신약 판정 결과를 출력한다 */
 function printStrength(strength: StrengthResult, i18n: I18n): void {
-  const stageBonus = strength.stageClass === 'Strong' ? 2 : strength.stageClass === 'Weak' ? -2 : 0;
-  const supportTotal = strength.supportStems * 2 + strength.supportHidden;
-  const drainTotal = strength.drainStems * 2 + strength.drainHidden;
+  const { STAGE_BONUS, STEM_WEIGHT, HIDDEN_WEIGHT } = str.STRENGTH_WEIGHTS;
+  const stageBonus = strength.stageClass === 'Strong' ? STAGE_BONUS : strength.stageClass === 'Weak' ? -STAGE_BONUS : 0;
+  const supportTotal = strength.supportStems * STEM_WEIGHT + strength.supportHidden * HIDDEN_WEIGHT;
+  const drainTotal = strength.drainStems * STEM_WEIGHT + strength.drainHidden * HIDDEN_WEIGHT;
 
   console.log(i18n.strengthHeading());
   console.log(`- ${i18n.monthStageLabel()}: ${i18n.stageLabel(strength.stageIndex)} (${i18n.strengthClassLabel(strength.stageClass)})`);

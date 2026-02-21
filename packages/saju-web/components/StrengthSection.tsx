@@ -7,17 +7,20 @@
 'use client';
 
 import type { SajuResult, StrengthResult } from 'saju-lib';
+import { strength as str } from 'saju-lib';
 import type { I18n } from 'saju-lib';
 import type { StrengthClass } from 'saju-lib';
+
+const { STAGE_BONUS, STEM_WEIGHT, HIDDEN_WEIGHT } = str.STRENGTH_WEIGHTS;
 
 interface Props { result: SajuResult; i18n: I18n }
 
 export default function StrengthSection({ result, i18n }: Props) {
   const s: StrengthResult = result.strength;
   const y = result.yongshin;
-  const stageBonus = s.stageClass === 'Strong' ? 2 : s.stageClass === 'Weak' ? -2 : 0;
-  const supportTotal = s.supportStems * 2 + s.supportHidden;
-  const drainTotal = s.drainStems * 2 + s.drainHidden;
+  const stageBonus = s.stageClass === 'Strong' ? STAGE_BONUS : s.stageClass === 'Weak' ? -STAGE_BONUS : 0;
+  const supportTotal = s.supportStems * STEM_WEIGHT + s.supportHidden * HIDDEN_WEIGHT;
+  const drainTotal = s.drainStems * STEM_WEIGHT + s.drainHidden * HIDDEN_WEIGHT;
 
   const elementClass = (el: string) => `element-${el.toLowerCase()}`;
 

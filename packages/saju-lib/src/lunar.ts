@@ -231,13 +231,18 @@ export function solarToLunar(date: Date): LunarDate {
 
   // 연도 결정: 누적 일수에서 각 연도의 총 일수를 차감
   let year = LUNAR_MIN_YEAR;
+  let yearFound = false;
   for (let y = LUNAR_MIN_YEAR; y <= LUNAR_MAX_YEAR; y++) {
     const days = lunarYearDays(y);
     if (offset < days) {
       year = y;
+      yearFound = true;
       break;
     }
     offset -= days;
+  }
+  if (!yearFound) {
+    throw new Error('solar date after supported lunar range');
   }
 
   // 월/윤달 결정: 남은 일수에서 각 월의 일수를 차감

@@ -9,7 +9,6 @@ import type {
   Element,
   Pillar,
   StrengthClass,
-  StrengthVerdict,
   YongshinResult,
 } from './types.js';
 import {
@@ -59,7 +58,7 @@ export interface StrengthResult {
   /** 종합 점수 */
   total: number;
   /** 최종 판정 (Strong/Weak/Neutral) */
-  verdict: StrengthVerdict;
+  verdict: StrengthClass;
 }
 
 // ── 내부 헬퍼 ──
@@ -142,7 +141,7 @@ export function assessStrength(dayStem: number, pillars: Pillar[]): StrengthResu
   const drainTotal = drainStems * STRENGTH_WEIGHTS.STEM_WEIGHT + drainHidden * STRENGTH_WEIGHTS.HIDDEN_WEIGHT;
   const total = stageBonus + rootCount + supportTotal - drainTotal;
 
-  const verdict: StrengthVerdict = total >= STRENGTH_WEIGHTS.STRONG_THRESHOLD ? 'Strong' : total <= STRENGTH_WEIGHTS.WEAK_THRESHOLD ? 'Weak' : 'Neutral';
+  const verdict: StrengthClass = total >= STRENGTH_WEIGHTS.STRONG_THRESHOLD ? 'Strong' : total <= STRENGTH_WEIGHTS.WEAK_THRESHOLD ? 'Weak' : 'Neutral';
 
   return {
     stageIndex: stageIdx,
@@ -173,7 +172,7 @@ export function assessStrength(dayStem: number, pillars: Pillar[]): StrengthResu
  * @param verdict 신강/신약 판정 결과
  * @returns 용신 판정 결과
  */
-export function determineYongshin(dayStem: number, verdict: StrengthVerdict): YongshinResult {
+export function determineYongshin(dayStem: number, verdict: StrengthClass): YongshinResult {
   const dayEl = stemElement(dayStem);
 
   const same = dayEl;                          // 비겁(比劫) — 같은 오행

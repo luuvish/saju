@@ -57,12 +57,12 @@ const MAX_TERMS_CACHE_SIZE = 50
 const termsCache = new Map<number, SolarTerm[]>()
 
 /** 절기 계산 결과를 캐싱하여 반복 호출 시 재계산을 방지한다 */
-function getCachedTerms(year: number): SolarTerm[] {
+export function getCachedTerms(year: number): SolarTerm[] {
   let t = termsCache.get(year)
   if (!t) {
     if (termsCache.size >= MAX_TERMS_CACHE_SIZE) {
-      const oldest = termsCache.keys().next().value!
-      termsCache.delete(oldest)
+      const oldest = termsCache.keys().next().value
+      if (oldest !== undefined) termsCache.delete(oldest)
     }
     t = computeSolarTerms(year)
     termsCache.set(year, t)
@@ -114,15 +114,19 @@ export function daewonStartMonths(
 
   let target: SolarTerm | undefined;
   if (direction === 'Forward') {
-    // 순행: 출생 이후 가장 가까운 절기
-    target = allTerms
-      .filter((t) => t.jd > birthJd)
-      .sort((a, b) => a.jd - b.jd)[0];
+    // 순행: 출생 이후 가장 가까운 절기 (선형 탐색)
+    for (const t of allTerms) {
+      if (t.jd > birthJd && (!target || t.jd < target.jd)) {
+        target = t;
+      }
+    }
   } else {
-    // 역행: 출생 이전 가장 가까운 절기
-    target = allTerms
-      .filter((t) => t.jd < birthJd)
-      .sort((a, b) => b.jd - a.jd)[0];
+    // 역행: 출생 이전 가장 가까운 절기 (선형 탐색)
+    for (const t of allTerms) {
+      if (t.jd < birthJd && (!target || t.jd > target.jd)) {
+        target = t;
+      }
+    }
   }
 
   if (!target) return null;

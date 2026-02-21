@@ -293,9 +293,9 @@ function computePillars(finalLocalDt: dayjs.Dayjs): PillarResolution {
   const birthJd = astro.jdFromDatetime(utcDt.toDate());
 
   const year = finalLocalDt.year();
-  const termsPrev = astro.computeSolarTerms(year - 1);
-  const termsCurr = astro.computeSolarTerms(year);
-  const termsNext = astro.computeSolarTerms(year + 1);
+  const termsPrev = luck.getCachedTerms(year - 1);
+  const termsCurr = luck.getCachedTerms(year);
+  const termsNext = luck.getCachedTerms(year + 1);
 
   // 입춘(立春) 기준 연주 결정
   const lichunTerm = termsCurr.find((t) => t.def.key === 'lichun');

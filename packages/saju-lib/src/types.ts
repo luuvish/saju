@@ -131,11 +131,8 @@ export type TenGod =
   | 'PyeonIn'   // 편인(偏印) — 생받는 오행, 같은 음양
   | 'JeongIn';  // 정인(正印) — 생받는 오행, 다른 음양
 
-/** 12운성 기반 강약 분류: 강(Strong), 약(Weak), 중(Neutral) */
+/** 강약 분류: 12운성 기반 분류(stageClass) 및 최종 판정(verdict) 공통 타입 */
 export type StrengthClass = 'Strong' | 'Weak' | 'Neutral';
-
-/** 신강/신약 최종 판정 결과 */
-export type StrengthVerdict = 'Strong' | 'Weak' | 'Neutral';
 
 /** 24절기 정의 */
 export interface TermDef {
