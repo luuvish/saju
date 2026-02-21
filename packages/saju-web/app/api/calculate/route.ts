@@ -1,9 +1,53 @@
 import { NextResponse } from 'next/server';
 import { calculate, type SajuRequest } from 'saju-lib';
 
+/** 요청 본문 검증. 실패 시 에러 메시지 반환, 성공 시 null */
+function validateRequest(body: Record<string, unknown>): string | null {
+  if (!body.date || typeof body.date !== 'string') {
+    return 'date is required (YYYY-MM-DD)'
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+    return 'date must be YYYY-MM-DD format'
+  }
+
+  if (!body.time || typeof body.time !== 'string') {
+    return 'time is required (HH:MM or HH:MM:SS)'
+  }
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(body.time)) {
+    return 'time must be HH:MM or HH:MM:SS format'
+  }
+
+  if (body.calendar !== undefined && body.calendar !== 'Solar' && body.calendar !== 'Lunar') {
+    return 'calendar must be Solar or Lunar'
+  }
+
+  if (body.gender !== undefined && body.gender !== 'Male' && body.gender !== 'Female') {
+    return 'gender must be Male or Female'
+  }
+
+  if (body.daewonCount !== undefined) {
+    if (typeof body.daewonCount !== 'number' || !Number.isInteger(body.daewonCount) || body.daewonCount < 1) {
+      return 'daewonCount must be a positive integer'
+    }
+  }
+
+  if (body.yearCount !== undefined) {
+    if (typeof body.yearCount !== 'number' || !Number.isInteger(body.yearCount) || body.yearCount < 1) {
+      return 'yearCount must be a positive integer'
+    }
+  }
+
+  return null
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+
+    const error = validateRequest(body)
+    if (error) {
+      return NextResponse.json({ error }, { status: 400 })
+    }
 
     const req: SajuRequest = {
       date: body.date,

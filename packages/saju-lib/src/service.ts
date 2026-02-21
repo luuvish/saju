@@ -15,9 +15,13 @@ dayjs.extend(timezone);
 
 import * as astro from './astro.js';
 import * as bazi from './bazi.js';
+import { findStemInteractions, findBranchInteractions } from './interactions.js';
 import * as location from './location.js';
 import * as luck from './luck.js';
 import * as lunar from './lunar.js';
+import { findShinsal } from './shinsal.js';
+import { assessStrength, determineYongshin } from './strength.js';
+import type { StrengthResult } from './strength.js';
 import * as tz from './timezone.js';
 import type {
   BranchInteraction,
@@ -31,7 +35,6 @@ import type {
   StemInteraction,
   YongshinResult,
 } from './types.js';
-import type { StrengthResult } from './bazi.js';
 import type { DaewonItem, MonthlyLuck, YearLuck } from './luck.js';
 import type { TimeZoneSpec } from './timezone.js';
 
@@ -138,6 +141,15 @@ function parseTime(input: string): { hour: number; minute: number; second: numbe
   if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
     throw new Error('time format must be HH:MM or HH:MM:SS');
   }
+  if (hour < 0 || hour > 23) {
+    throw new Error('hour must be 0-23');
+  }
+  if (minute < 0 || minute > 59) {
+    throw new Error('minute must be 0-59');
+  }
+  if (second < 0 || second > 59) {
+    throw new Error('second must be 0-59');
+  }
   return { hour, minute, second };
 }
 
@@ -165,6 +177,14 @@ export function calculate(req: SajuRequest): SajuResult {
 
   const dateParts = req.date.split('-').map(Number);
   const [inputYear, inputMonth, inputDay] = dateParts;
+
+  // ── 사전 범위 검증 ──
+  if (req.calendar === 'Lunar' && (inputYear < 1900 || inputYear > 2099)) {
+    throw new Error('음력 변환은 1900-2099년 범위만 지원합니다');
+  }
+  if (req.calendar === 'Solar' && (inputYear < 1900 || inputYear > 2100)) {
+    throw new Error('양력 절기 계산은 1900-2100년 범위만 지원합니다');
+  }
 
   // ── 1단계: 음양력 변환 ──
   let convertedSolar: string | null = null;
@@ -302,11 +322,11 @@ export function calculate(req: SajuRequest): SajuResult {
 
   // ── 7단계: 분석 (강약, 용신, 합충, 신살) ──
   const fourPillars = [yearPillar, monthPillar, dayPillar, hourPillar];
-  const strength = bazi.assessStrength(dayStem, fourPillars);
-  const yongshinResult = bazi.determineYongshin(dayStem, strength.verdict);
-  const stemInteractions = bazi.findStemInteractions(fourPillars);
-  const branchInteractions = bazi.findBranchInteractions(fourPillars);
-  const shinsalEntries = bazi.findShinsal(fourPillars);
+  const strength = assessStrength(dayStem, fourPillars);
+  const yongshinResult = determineYongshin(dayStem, strength.verdict);
+  const stemInteractions = findStemInteractions(fourPillars);
+  const branchInteractions = findBranchInteractions(fourPillars);
+  const shinsalEntries = findShinsal(fourPillars);
 
   return {
     inputDate: req.date,

@@ -9,6 +9,9 @@
 export * from './types.js';
 export * as astro from './astro.js';
 export * as bazi from './bazi.js';
+export * as interactions from './interactions.js';
+export * as shinsal from './shinsal.js';
+export * as strength from './strength.js';
 export * as lunar from './lunar.js';
 export * as luck from './luck.js';
 export * as location from './location.js';
@@ -18,6 +21,7 @@ export type { Lang, PillarKind } from './i18n.js';
 export { calculate } from './service.js';
 export type { CalendarType, SajuRequest, SajuResult } from './service.js';
 export type { YongshinResult } from './types.js';
-export type { StrengthResult } from './bazi.js';
+export { STRENGTH_WEIGHTS } from './strength.js';
+export type { StrengthResult } from './strength.js';
 export type { TimeZoneSpec } from './timezone.js';
 export type { DaewonItem, YearLuck, MonthLuck, MonthlyLuck } from './luck.js';
