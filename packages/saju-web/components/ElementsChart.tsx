@@ -54,7 +54,7 @@ export default function ElementsChart({ result, i18n }: Props) {
 }
 
 function ElementDoughnut({ counts }: { counts: number[] }) {
-  const colors = ['#2e7d32', '#d32f2f', '#f9a825', '#bdbdbd', '#424242'];
+  const colors = ['#3a7d3a', '#c0392b', '#c8870a', '#8a9099', '#3a4a5c'];
   const total = counts.reduce((a, b) => a + b, 0);
   if (total === 0) return null;
 
