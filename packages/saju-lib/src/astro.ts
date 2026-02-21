@@ -1,5 +1,20 @@
+/**
+ * @fileoverview 천문 계산 모듈 — 절기(節氣) 시점 산출
+ *
+ * 태양의 시황경(apparent longitude)을 계산하여 24절기의 정확한 발생 시점을
+ * 율리우스일(Julian Date)로 산출한다. 사주 연주·월주 결정에 핵심적인 모듈이다.
+ *
+ * 태양 위치 계산에는 VSOP87 이론의 간략 공식(low-precision solar position)을
+ * 사용한다. Jean Meeus, "Astronomical Algorithms" 참조.
+ */
+
 import type { SolarTerm, TermDef } from './types.js';
 
+/**
+ * 24절기 정의 배열.
+ * 소한(285°)부터 동지(270°)까지 황경 순서로 배열된다.
+ * angle은 춘분점(0°) 기준 태양 황경이다.
+ */
 export const TERM_DEFS: TermDef[] = [
   { key: 'xiaohan', nameKo: '소한', nameHanja: '小寒', nameEn: 'Xiaohan', angle: 285.0 },
   { key: 'dahan', nameKo: '대한', nameHanja: '大寒', nameEn: 'Dahan', angle: 300.0 },
@@ -27,16 +42,36 @@ export const TERM_DEFS: TermDef[] = [
   { key: 'dongzhi', nameKo: '동지', nameHanja: '冬至', nameEn: 'Dongzhi', angle: 270.0 },
 ];
 
+/**
+ * JavaScript Date → 율리우스일(JD) 변환.
+ * @param dt UTC 기준 Date 객체
+ * @returns 율리우스일 (실수)
+ */
 export function jdFromDatetime(dt: Date): number {
   const seconds = dt.getTime() / 1000;
   return seconds / 86400.0 + 2440587.5;
 }
 
+/**
+ * 율리우스일(JD) → JavaScript Date 변환.
+ * @param jd 율리우스일 (실수)
+ * @returns UTC 기준 Date 객체
+ */
 export function datetimeFromJd(jd: number): Date {
   const ms = (jd - 2440587.5) * 86400000;
   return new Date(ms);
 }
 
+/**
+ * UTC 날짜·시간 요소로부터 율리우스일을 계산한다.
+ * @param year 연도
+ * @param month 월 (1~12)
+ * @param day 일
+ * @param hour 시
+ * @param min 분
+ * @param sec 초
+ * @returns 율리우스일 (실수)
+ */
 export function jdFromUtcDate(
   year: number,
   month: number,
@@ -50,11 +85,21 @@ export function jdFromUtcDate(
   return jdFromDatetime(dt);
 }
 
+/**
+ * 특정 연도의 24절기 시점을 계산한다.
+ *
+ * 매일의 태양 황경을 추적하며, 목표 황경에 도달하는 시점을
+ * 이분법(bisection)으로 정밀 산출한다.
+ *
+ * @param year 절기를 계산할 연도
+ * @returns 24개 절기의 SolarTerm 배열
+ */
 export function computeSolarTerms(year: number): SolarTerm[] {
   const start = jdFromUtcDate(year, 1, 1, 0, 0, 0);
   const end = jdFromUtcDate(year + 1, 1, 1, 0, 0, 0);
   const days = Math.ceil(end - start);
 
+  // 목표 황경을 단조증가로 정렬 (360° 경계 처리)
   const targets: number[] = [];
   let last = -1.0;
   for (const def of TERM_DEFS) {
@@ -71,6 +116,7 @@ export function computeSolarTerms(year: number): SolarTerm[] {
   let prevJd = start;
   let prevUnwrapped = sunApparentLongitude(prevJd);
 
+  // 하루 단위로 태양 황경을 추적하며 절기 경계를 탐지
   for (let day = 1; day <= days; day++) {
     const jd = start + day;
     let lon = sunApparentLongitude(jd);
@@ -83,6 +129,7 @@ export function computeSolarTerms(year: number): SolarTerm[] {
         targetIdx++;
         continue;
       }
+      // 이분법으로 정밀 시점 산출
       const termJd = refineTerm(prevJd, jd, prevUnwrapped, target);
       results.push({ def: TERM_DEFS[targetIdx], jd: termJd });
       targetIdx++;
@@ -94,21 +141,47 @@ export function computeSolarTerms(year: number): SolarTerm[] {
   return results;
 }
 
+/**
+ * 태양 시황경(apparent longitude)을 계산한다.
+ *
+ * VSOP87 간략 공식 기반:
+ * 1. 평균 황경(L0)과 평균 근점이각(M)을 계산
+ * 2. 중심차(equation of center, C)를 적용하여 진황경 산출
+ * 3. 장동(nutation) 보정을 적용하여 시황경 산출
+ *
+ * @param jd 율리우스일
+ * @returns 태양 시황경 (0~360도)
+ */
 function sunApparentLongitude(jd: number): number {
+  // 율리우스 세기(T) — J2000.0 에포크 기준
   const t = (jd - 2451545.0) / 36525.0;
+  // 태양 평균 황경(L0)
   const l0 = 280.46646 + 36000.76983 * t + 0.0003032 * t * t;
+  // 태양 평균 근점이각(M)
   const m = 357.52911 + 35999.05029 * t - 0.0001537 * t * t;
   const mRad = degToRad(m);
+  // 중심차(C) — 케플러 방정식의 근사해
   const c =
     (1.914602 - 0.004817 * t - 0.000014 * t * t) * Math.sin(mRad) +
     (0.019993 - 0.000101 * t) * Math.sin(2.0 * mRad) +
     0.000289 * Math.sin(3.0 * mRad);
   const trueLong = l0 + c;
+  // 장동(nutation) 보정
   const omega = 125.04 - 1934.136 * t;
   const lambda = trueLong - 0.00569 - 0.00478 * Math.sin(degToRad(omega));
   return normDeg(lambda);
 }
 
+/**
+ * 이분법(bisection)으로 태양 황경이 목표값에 도달하는 JD를 정밀 산출한다.
+ * 60회 반복으로 약 10⁻¹⁸일(≈ 0.1µs) 정밀도를 달성한다.
+ *
+ * @param jd0 탐색 시작 JD
+ * @param jd1 탐색 종료 JD
+ * @param lon0 jd0 시점의 태양 황경
+ * @param target 목표 황경
+ * @returns 목표 황경 도달 시점의 JD
+ */
 function refineTerm(jd0: number, jd1: number, lon0: number, target: number): number {
   let lo = jd0;
   let hi = jd1;
@@ -129,10 +202,12 @@ function refineTerm(jd0: number, jd1: number, lon0: number, target: number): num
   return (lo + hi) / 2.0;
 }
 
+/** 도(degrees) → 라디안(radians) 변환 */
 function degToRad(deg: number): number {
   return (deg * Math.PI) / 180.0;
 }
 
+/** 각도를 0~360도 범위로 정규화 */
 function normDeg(deg: number): number {
   deg = deg % 360.0;
   if (deg < 0.0) {

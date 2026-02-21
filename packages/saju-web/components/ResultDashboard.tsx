@@ -1,3 +1,10 @@
+/**
+ * @fileoverview 사주 결과 대시보드 컴포넌트
+ *
+ * 사주 계산 결과(SajuResult)를 받아 모든 하위 컴포넌트를 조합하여
+ * 통합 결과 화면을 렌더링한다. 입력 요약, 기둥 테이블, 관계,
+ * 신살, 강약, 오행, 대운, 세운, 월운 섹션을 포함한다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
@@ -21,6 +28,7 @@ export default function ResultDashboard({ result, lang, name }: Props) {
   const lmt = result.lmtInfo;
   const lmtShort = lmt ? `${lmt.correctionSeconds > 0 ? '+' : ''}${lmt.correctionSeconds}s${lmt.locationLabel ? ` ${lmt.locationLabel}` : ''}` : null;
 
+  // 프로필 요약 문자열 조합
   const parts: string[] = [];
   if (name) parts.push(name);
   parts.push(

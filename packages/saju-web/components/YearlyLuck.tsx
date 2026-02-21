@@ -1,24 +1,15 @@
+/**
+ * @fileoverview 세운(歲運) 타임라인 컴포넌트
+ *
+ * 매년의 세운(연운)을 가로 타임라인으로 표시한다.
+ * 입춘(立春) 기준으로 올해에 해당하는 세운을 하이라이트한다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
 import { bazi, astro } from 'saju-lib';
 import type { I18n } from 'saju-lib';
-import type { Element } from 'saju-lib';
-
-function elementCss(el: Element): string {
-  const map: Record<Element, string> = {
-    Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
-    Metal: 'element-metal', Water: 'element-water',
-  };
-  return map[el];
-}
-
-function stemSub(i18n: I18n, stem: number): string {
-  return `${bazi.stemPolarity(stem) ? '+' : '-'}${i18n.elementShortLabel(bazi.stemElement(stem))}`;
-}
-function branchSub(i18n: I18n, branch: number): string {
-  return `${bazi.branchPolarity(branch) ? '+' : '-'}${i18n.elementShortLabel(bazi.branchElement(branch))}`;
-}
+import { elementCss, stemSub, branchSub } from './utils';
 
 interface Props { result: SajuResult; i18n: I18n }
 

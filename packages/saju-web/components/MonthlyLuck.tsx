@@ -1,24 +1,16 @@
+/**
+ * @fileoverview 월운(月運) 타임라인 컴포넌트
+ *
+ * 절기 기준 12개월의 월운을 가로 타임라인으로 표시한다.
+ * 현재 월에 해당하는 월운을 하이라이트하며,
+ * 현재 월이 초반부에 위치하면 전년도 월운을 앞에 채워 넣는다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
 import { bazi, astro, luck } from 'saju-lib';
 import type { I18n, MonthlyLuck as MonthlyLuckType } from 'saju-lib';
-import type { Element } from 'saju-lib';
-
-function elementCss(el: Element): string {
-  const map: Record<Element, string> = {
-    Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
-    Metal: 'element-metal', Water: 'element-water',
-  };
-  return map[el];
-}
-
-function stemSub(i18n: I18n, stem: number): string {
-  return `${bazi.stemPolarity(stem) ? '+' : '-'}${i18n.elementShortLabel(bazi.stemElement(stem))}`;
-}
-function branchSub(i18n: I18n, branch: number): string {
-  return `${bazi.branchPolarity(branch) ? '+' : '-'}${i18n.elementShortLabel(bazi.branchElement(branch))}`;
-}
+import { elementCss, stemSub, branchSub } from './utils';
 
 interface MonthItem {
   pillar: { stem: number; branch: number };
@@ -28,12 +20,15 @@ interface MonthItem {
   isCurrent: boolean;
 }
 
+/**
+ * 월운 아이템 배열을 구성한다.
+ * 현재 월이 리스트 초반에 오면, 전년도 월운을 앞에 추가하여
+ * 현재 월이 약 1/3 위치에 오도록 조정한다.
+ */
 function buildMonthItems(ml: MonthlyLuckType, nowJd: number): MonthItem[] {
-  // Find current month index
   const currentIdx = ml.months.findIndex((m) => nowJd >= m.startJd && nowJd < m.endJd);
 
-  // We want current month at ~1/3 position (index 4 in 12-item list).
-  // If current is at index < 4, prepend previous year's months to shift it right.
+  // 현재 월이 인덱스 4 미만이면 전년도 월운을 앞에 채움
   const prefixCount = currentIdx >= 0 && currentIdx < 4 ? 4 - currentIdx : 0;
 
   const items: MonthItem[] = [];
@@ -52,7 +47,7 @@ function buildMonthItems(ml: MonthlyLuckType, nowJd: number): MonthItem[] {
         });
       }
     } catch {
-      // ignore if previous year's data unavailable
+      // 전년도 데이터 없으면 무시
     }
   }
 

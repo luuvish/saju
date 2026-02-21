@@ -1,3 +1,10 @@
+/**
+ * @fileoverview 사주 입력 폼 컴포넌트
+ *
+ * 생년월일·시간·성별·역법·시간대·지역 등 사주 계산에 필요한
+ * 입력을 받는 폼. 필드 변경 시 자동으로 디바운스 후 계산을 트리거한다.
+ * localStorage에 최근 입력값을 저장하여 재방문 시 복원한다.
+ */
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -5,6 +12,10 @@ import { location as loc } from 'saju-lib';
 
 const STORAGE_KEY = 'saju-form-state';
 
+/** 자동 제출 디바운스 시간 (밀리초) */
+const DEBOUNCE_MS = 300;
+
+/** localStorage에 저장되는 폼 상태 */
 interface SavedState {
   name?: string;
   date?: string;
@@ -16,6 +27,7 @@ interface SavedState {
   locationVal?: string;
 }
 
+/** localStorage에서 이전 폼 상태를 로드한다 */
 function loadSavedState(): SavedState | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -44,6 +56,7 @@ export default function SajuForm({ onSubmit, loading }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const locations = loc.locationList();
 
+  /** 현재 폼 상태를 API 요청 페이로드로 변환한다 */
   function buildPayload() {
     const useLmt = !!locationVal;
     return {
@@ -61,14 +74,15 @@ export default function SajuForm({ onSubmit, loading }: Props) {
     };
   }
 
+  /** 디바운스 후 자동 제출 */
   function triggerUpdate() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       onSubmit(buildPayload());
-    }, 300);
+    }, DEBOUNCE_MS);
   }
 
-  // Auto-submit on any field change (like htmx version)
+  // 필드 변경 시 자동 제출 + localStorage 저장
   const firstRender = useRef(true);
   useEffect(() => {
     if (firstRender.current) {

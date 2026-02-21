@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 신강/신약 및 용신(用神) 표시 컴포넌트
+ *
+ * 일간의 강약 판정 결과(점수, 월지 운성, 통근, 지원/억제)와
+ * 용신·희신·기신·구신을 카드 형태로 표시한다.
+ */
 'use client';
 
 import type { SajuResult, StrengthResult } from 'saju-lib';
@@ -21,6 +27,7 @@ export default function StrengthSection({ result, i18n }: Props) {
     <section className="section">
       <h3>{i18n.strengthHeading()}</h3>
 
+      {/* 판정 결과 요약: 배지 + 점수 */}
       <div className="strength-summary">
         <div className={`verdict-badge ${verdictClass}`}>
           {i18n.strengthVerdictLabel(s.verdict)}
@@ -31,6 +38,7 @@ export default function StrengthSection({ result, i18n }: Props) {
         </div>
       </div>
 
+      {/* 판정 상세: 운성, 통근, 지원, 억제 */}
       <div className="strength-details">
         <div className="strength-row">
           <span className="strength-label">{i18n.monthStageLabel()}</span>
@@ -50,6 +58,7 @@ export default function StrengthSection({ result, i18n }: Props) {
         </div>
       </div>
 
+      {/* 용신(用神) 섹션 */}
       <h3 style={{ marginTop: 'var(--space-5)' }}>{i18n.yongshinHeading()}</h3>
       <p className="yongshin-method">{i18n.yongshinMethodLabel(y.method)}</p>
       <div className="yongshin-grid">

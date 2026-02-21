@@ -1,3 +1,14 @@
+/**
+ * @fileoverview 사주팔자 CLI 도구
+ *
+ * 명령줄에서 생년월일·시간·성별 등을 입력받아 사주팔자를 계산하고
+ * 텍스트 형식으로 출력한다. commander 라이브러리 기반.
+ *
+ * 사용 예:
+ *   saju --date 2000-01-15 --time 12:00 --gender male
+ *   saju --date 1990-05-20 --time 08:30 --gender female --calendar lunar
+ */
+
 import { Command } from 'commander';
 import {
   calculate,
@@ -52,6 +63,10 @@ program
 
 program.parse();
 
+/**
+ * CLI 메인 실행 함수.
+ * 커맨드라인 옵션을 SajuRequest로 변환 후 계산·출력한다.
+ */
 function run(opts: any): void {
   const lang: Lang = opts.lang === 'en' ? 'En' : 'Ko';
   const i18n = new I18n(lang);
@@ -95,6 +110,7 @@ function run(opts: any): void {
   }
 }
 
+/** 성별 문자열을 Gender 타입으로 파싱한다 */
 function parseGender(input: string): Gender {
   switch (input.toLowerCase()) {
     case 'male': case 'm': case '남': return 'Male';
@@ -103,6 +119,7 @@ function parseGender(input: string): Gender {
   }
 }
 
+/** 보정 초를 '±00m00s' 형식으로 포맷한다 */
 function formatCorrection(seconds: number): string {
   const sign = seconds >= 0 ? '+' : '-';
   const abs = Math.abs(seconds);
@@ -111,16 +128,19 @@ function formatCorrection(seconds: number): string {
   return `${sign}${String(mins).padStart(2, '0')}m${String(secs).padStart(2, '0')}s`;
 }
 
+/** 지장간을 '갑(甲), 병(丙), 무(戊)' 형식으로 포맷한다 */
 function formatHiddenStems(i18n: I18n, branch: number): string {
   return bazi.hiddenStems(branch).map((stem) => i18n.stemLabel(stem)).join(', ');
 }
 
+/** 지장간을 십성과 함께 포맷한다 */
 function formatHiddenStemsWithTengod(i18n: I18n, dayStem: number, branch: number): string {
   return bazi.hiddenStems(branch)
     .map((stem) => `${i18n.stemLabel(stem)} ${i18n.tenGodLabel(bazi.tenGod(dayStem, stem))}`)
     .join(', ');
 }
 
+/** 입력 정보 및 보정 내역을 출력한다 */
 function printHeader(result: SajuResult, i18n: I18n): void {
   console.log(i18n.title());
   console.log(`- ${i18n.inputLabel()}(${i18n.calendarLabel(result.calendarIsLunar, result.leapMonth)}): ${result.inputDate} ${result.inputTime} ${result.tzName}`);
@@ -146,6 +166,7 @@ function printHeader(result: SajuResult, i18n: I18n): void {
   console.log();
 }
 
+/** 사주 네 기둥을 출력한다 */
 function printPillars(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: I18n): void {
   const kinds: PillarKind[] = ['Year', 'Month', 'Day', 'Hour'];
   const pillars = [year, month, day, hour];
@@ -159,6 +180,7 @@ function printPillars(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i1
   console.log();
 }
 
+/** 지장간을 출력한다 */
 function printHiddenStems(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: I18n): void {
   const kinds: PillarKind[] = ['Year', 'Month', 'Day', 'Hour'];
   const pillars = [year, month, day, hour];
@@ -169,6 +191,7 @@ function printHiddenStems(year: Pillar, month: Pillar, day: Pillar, hour: Pillar
   console.log();
 }
 
+/** 십성(천간·지지·지장간)을 출력한다 */
 function printTenGods(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: I18n): void {
   const kinds: PillarKind[] = ['Year', 'Month', 'Day', 'Hour'];
   const pillars = [year, month, day, hour];
@@ -182,6 +205,7 @@ function printTenGods(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i1
   console.log();
 }
 
+/** 12운성을 출력한다 */
 function printTwelveStages(dayStem: number, year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: I18n): void {
   const kinds: PillarKind[] = ['Year', 'Month', 'Day', 'Hour'];
   const pillars = [year, month, day, hour];
@@ -190,6 +214,7 @@ function printTwelveStages(dayStem: number, year: Pillar, month: Pillar, day: Pi
   console.log();
 }
 
+/** 12신살을 출력한다 */
 function printTwelveShinsal(yearBranch: number, year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: I18n): void {
   const kinds: PillarKind[] = ['Year', 'Month', 'Day', 'Hour'];
   const pillars = [year, month, day, hour];
@@ -198,6 +223,7 @@ function printTwelveShinsal(yearBranch: number, year: Pillar, month: Pillar, day
   console.log();
 }
 
+/** 신강/신약 판정 결과를 출력한다 */
 function printStrength(strength: StrengthResult, i18n: I18n): void {
   const stageBonus = strength.stageClass === 'Strong' ? 2 : strength.stageClass === 'Weak' ? -2 : 0;
   const supportTotal = strength.supportStems * 2 + strength.supportHidden;
@@ -211,6 +237,7 @@ function printStrength(strength: StrengthResult, i18n: I18n): void {
   console.log();
 }
 
+/** 오행 분포를 출력한다 */
 function printElements(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i18n: I18n): void {
   const counts = bazi.elementsCount([year, month, day, hour]);
   const elements: Element[] = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
@@ -219,6 +246,7 @@ function printElements(year: Pillar, month: Pillar, day: Pillar, hour: Pillar, i
   console.log();
 }
 
+/** 대운을 출력한다 */
 function printDaewon(direction: Direction, startMonths: number, items: luck.DaewonItem[], dayStem: number, i18n: I18n): void {
   console.log(`${i18n.daewonHeading()} (${i18n.directionLabel(direction)} , ${i18n.startLabel()} ${i18n.formatAge(startMonths, false)})`);
   for (const item of items) {
@@ -227,6 +255,7 @@ function printDaewon(direction: Direction, startMonths: number, items: luck.Daew
   console.log();
 }
 
+/** 세운(연운)을 출력한다 */
 function printYearlyLuck(years: luck.YearLuck[], dayStem: number, tzSpec: TimeZoneSpec, i18n: I18n): void {
   console.log(i18n.yearlyLuckHeading());
   for (const y of years) {
@@ -237,6 +266,7 @@ function printYearlyLuck(years: luck.YearLuck[], dayStem: number, tzSpec: TimeZo
   console.log();
 }
 
+/** 월운을 출력한다 */
 function printMonthlyLuck(monthly: luck.MonthlyLuck, dayStem: number, tzSpec: TimeZoneSpec, i18n: I18n): void {
   console.log(i18n.monthlyLuckHeading(monthly.year));
   console.log(`- ${i18n.yearLuckLabel()}: ${i18n.pillarLabel(monthly.yearPillar)} | ${i18n.tenGodsLabel()}: ${i18n.stemsLabel()} ${i18n.tenGodLabel(bazi.tenGod(dayStem, monthly.yearPillar.stem))}, ${i18n.branchesLabel()} ${i18n.tenGodLabel(bazi.tenGodBranch(dayStem, monthly.yearPillar.branch))}`);
@@ -248,6 +278,7 @@ function printMonthlyLuck(monthly: luck.MonthlyLuck, dayStem: number, tzSpec: Ti
   console.log();
 }
 
+/** 24절기를 출력한다 */
 function printTerms(tzSpec: TimeZoneSpec, terms: SolarTerm[], i18n: I18n): void {
   console.log(`${i18n.termsHeading()} (${timezone.tzName(tzSpec)} ${i18n.tzLabel()})`);
   for (const term of terms) {

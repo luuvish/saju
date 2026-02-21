@@ -1,9 +1,16 @@
+/**
+ * @fileoverview 합충형파해(合沖刑破害) 관계 표시 컴포넌트
+ *
+ * 사주 네 기둥 간의 천간 합/충과 지지 육합/충/형/파/해/방합/삼합을
+ * 리스트 형태로 표시한다. 관계가 없으면 섹션 자체를 렌더링하지 않는다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
 import type { I18n } from 'saju-lib';
 import type { StemRelationType, BranchRelationType } from 'saju-lib';
 
+/** 관계 유형에 대응하는 CSS 클래스명을 반환한다 */
 function interactionCss(rel: StemRelationType | BranchRelationType): string {
   const map: Record<string, string> = {
     Hap: 'interaction-hap', Chung: 'interaction-chung',

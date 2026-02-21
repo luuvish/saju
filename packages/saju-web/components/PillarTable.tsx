@@ -1,32 +1,22 @@
+/**
+ * @fileoverview 사주 기둥(四柱) 테이블 컴포넌트
+ *
+ * 연주·월주·일주·시주와 현재 세운·월운을 한 테이블에 표시한다.
+ * 천간·지지, 십성, 지장간, 12운성, 12신살을 행 단위로 렌더링한다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
 import { bazi, astro } from 'saju-lib';
 import type { I18n } from 'saju-lib';
 import type { Pillar, PillarPosition, Element } from 'saju-lib';
+import { elementCss, stemSub, branchSub } from './utils';
 
 type PillarKind = 'Year' | 'Month' | 'Day' | 'Hour' | 'YearlyLuck' | 'MonthlyLuck';
 
-function elementCss(el: Element): string {
-  const map: Record<Element, string> = {
-    Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
-    Metal: 'element-metal', Water: 'element-water',
-  };
-  return map[el];
-}
-
-function stemSub(i18n: I18n, stem: number): string {
-  const pol = bazi.stemPolarity(stem);
-  return `${pol ? '+' : '-'}${i18n.elementShortLabel(bazi.stemElement(stem))}`;
-}
-
-function branchSub(i18n: I18n, branch: number): string {
-  const pol = bazi.branchPolarity(branch);
-  return `${pol ? '+' : '-'}${i18n.elementShortLabel(bazi.branchElement(branch))}`;
-}
-
 interface Props { result: SajuResult; i18n: I18n }
 
+/** 기둥 종류에 따른 레이블을 반환한다 */
 function kindLabel(i18n: I18n, kind: PillarKind): string {
   if (kind === 'YearlyLuck') return i18n.lang === 'Ko' ? '세운' : 'Yearly';
   if (kind === 'MonthlyLuck') return i18n.lang === 'Ko' ? '월운' : 'Monthly';
@@ -38,10 +28,11 @@ export default function PillarTable({ result, i18n }: Props) {
   const yb = result.yearPillar.branch;
   const nowJd = astro.jdFromDatetime(new Date());
 
-  // Find current yearly & monthly luck pillars
+  // 현재 시점의 세운·월운 기둥 탐색
   const currentYear = result.yearlyLuck.find((y) => nowJd >= y.startJd && nowJd < y.endJd);
   const currentMonth = result.monthlyLuck.months.find((m) => nowJd >= m.startJd && nowJd < m.endJd);
 
+  /** 기둥 하나의 표시 데이터를 조립한다 */
   function buildCol(kind: PillarKind, p: Pillar) {
     const stemEl = bazi.stemElement(p.stem);
     const branchEl = bazi.branchElement(p.branch);
@@ -67,6 +58,7 @@ export default function PillarTable({ result, i18n }: Props) {
     Day: result.dayPillar, Hour: result.hourPillar,
   };
 
+  // 세운·월운 기둥을 사주 앞에 배치
   const cols = [
     ...(currentMonth ? [buildCol('MonthlyLuck', currentMonth.pillar)] : []),
     ...(currentYear ? [buildCol('YearlyLuck', currentYear.pillar)] : []),

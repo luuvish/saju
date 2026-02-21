@@ -1,19 +1,18 @@
+/**
+ * @fileoverview 오행(五行) 분포 차트 컴포넌트
+ *
+ * 사주 네 기둥의 오행 분포를 바 차트와 도넛 차트로 시각화한다.
+ * 목(木)·화(火)·토(土)·금(金)·수(水) 각각의 개수와 비율을 표시한다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
 import { bazi } from 'saju-lib';
 import type { I18n } from 'saju-lib';
 import type { Element } from 'saju-lib';
+import { elementCss } from './utils';
 
 const ELEMENTS: Element[] = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
-
-function elementCss(el: Element): string {
-  const map: Record<Element, string> = {
-    Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
-    Metal: 'element-metal', Water: 'element-water',
-  };
-  return map[el];
-}
 
 interface Props { result: SajuResult; i18n: I18n }
 
@@ -53,6 +52,7 @@ export default function ElementsChart({ result, i18n }: Props) {
   );
 }
 
+/** SVG 도넛 차트 — 오행별 비율을 시각화한다 */
 function ElementDoughnut({ counts }: { counts: number[] }) {
   const colors = ['#3a7d3a', '#c0392b', '#c8870a', '#8a9099', '#3a4a5c'];
   const total = counts.reduce((a, b) => a + b, 0);
@@ -64,7 +64,8 @@ function ElementDoughnut({ counts }: { counts: number[] }) {
   const outer = 80;
   const inner = 45;
 
-  let cumAngle = -Math.PI / 2;
+  // 호(arc)를 순차적으로 그려 도넛 형태를 구성
+  let cumAngle = -Math.PI / 2; // 12시 방향에서 시작
   const paths = counts.map((count, idx) => {
     if (count === 0) return null;
     const angle = (count / total) * 2 * Math.PI;

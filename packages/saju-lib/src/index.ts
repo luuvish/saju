@@ -1,3 +1,11 @@
+/**
+ * @fileoverview saju-lib 공개 API
+ *
+ * 사주팔자(四柱八字) 계산 라이브러리의 진입점.
+ * 절기(節氣) 기반 연주/월주 결정, 음양력 변환, 대운/세운/월운,
+ * 천간·지지 합충형파해, 신살, 신강/신약 판정, 용신 등을 제공한다.
+ */
+
 export * from './types.js';
 export * as astro from './astro.js';
 export * as bazi from './bazi.js';

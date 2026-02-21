@@ -1,27 +1,24 @@
+/**
+ * @fileoverview 대운(大運) 타임라인 컴포넌트
+ *
+ * 10년 주기의 대운을 가로 타임라인으로 표시한다.
+ * 현재 나이에 해당하는 대운을 하이라이트한다.
+ */
 'use client';
 
 import type { SajuResult } from 'saju-lib';
 import { bazi } from 'saju-lib';
 import type { I18n } from 'saju-lib';
-import type { Element } from 'saju-lib';
+import { elementCss, stemSub, branchSub } from './utils';
 
-function elementCss(el: Element): string {
-  const map: Record<Element, string> = {
-    Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
-    Metal: 'element-metal', Water: 'element-water',
-  };
-  return map[el];
-}
+/** 대운 1주기 = 120개월(10년) */
+const DAEWON_SPAN_MONTHS = 120;
 
-function stemSub(i18n: I18n, stem: number): string {
-  return `${bazi.stemPolarity(stem) ? '+' : '-'}${i18n.elementShortLabel(bazi.stemElement(stem))}`;
-}
-function branchSub(i18n: I18n, branch: number): string {
-  return `${bazi.branchPolarity(branch) ? '+' : '-'}${i18n.elementShortLabel(bazi.branchElement(branch))}`;
-}
-
+/**
+ * 출생일 기준 현재까지의 경과 개월 수를 계산한다.
+ * @returns 경과 개월 수, 또는 계산 불가 시 null
+ */
 function computeAgeMonths(result: SajuResult): number | null {
-  // Determine solar birth date
   let solarDateStr: string;
   if (result.calendarIsLunar && result.convertedSolar) {
     solarDateStr = result.convertedSolar;
@@ -56,7 +53,7 @@ export default function DaewonTimeline({ result, i18n }: Props) {
           const branchEl = bazi.branchElement(p.branch);
           const isCurrent = ageMonths !== null
             && ageMonths >= item.startMonths
-            && ageMonths < item.startMonths + 120;
+            && ageMonths < item.startMonths + DAEWON_SPAN_MONTHS;
           return (
             <div key={idx} className={`luck-card${isCurrent ? ' luck-current' : ''}`}>
               <div className="luck-age">{i18n.formatAge(item.startMonths, true)}</div>
