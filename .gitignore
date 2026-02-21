@@ -7,3 +7,17 @@
 .DS_Store
 .idea/
 .vscode/
+
+# Node.js
+node_modules/
+dist/
+.next/
+.turbo/
+
+# pnpm
+*.tgz
+
+# env
+.env
+.env.local
+.env.*.local

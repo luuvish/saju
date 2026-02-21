@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+:root {
+  --color-wood: #4ade80;
+  --color-fire: #f87171;
+  --color-earth: #facc15;
+  --color-metal: #9ca3af;
+  --color-water: #60a5fa;
+
+  --color-wood-bg: #dcfce7;
+  --color-fire-bg: #fee2e2;
+  --color-earth-bg: #fef9c3;
+  --color-metal-bg: #f3f4f6;
+  --color-water-bg: #dbeafe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-wood-bg: #14532d;
+    --color-fire-bg: #7f1d1d;
+    --color-earth-bg: #713f12;
+    --color-metal-bg: #374151;
+    --color-water-bg: #1e3a5f;
+  }
+}
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.element-wood { color: var(--color-wood); }
+.element-fire { color: var(--color-fire); }
+.element-earth { color: var(--color-earth); }
+.element-metal { color: var(--color-metal); }
+.element-water { color: var(--color-water); }
+
+.element-bg-wood { background-color: var(--color-wood-bg); }
+.element-bg-fire { background-color: var(--color-fire-bg); }
+.element-bg-earth { background-color: var(--color-earth-bg); }
+.element-bg-metal { background-color: var(--color-metal-bg); }
+.element-bg-water { background-color: var(--color-water-bg); }

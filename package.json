@@ -1,0 +1,13 @@
+{
+  "name": "saju",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "dev": "pnpm --filter saju-web dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

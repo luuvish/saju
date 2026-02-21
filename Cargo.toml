@@ -1,3 +1,0 @@
-[workspace]
-resolver = "2"
-members = ["crates/saju-lib", "crates/saju-cli", "crates/saju-web"]
