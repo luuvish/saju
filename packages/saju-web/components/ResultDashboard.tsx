@@ -12,43 +12,29 @@ import DaewonTimeline from './DaewonTimeline';
 import YearlyLuck from './YearlyLuck';
 import MonthlyLuck from './MonthlyLuck';
 
-interface Props { result: SajuResult; lang: Lang }
+interface Props { result: SajuResult; lang: Lang; name?: string }
 
-export default function ResultDashboard({ result, lang }: Props) {
+export default function ResultDashboard({ result, lang, name }: Props) {
   const i18n = new I18n(lang);
 
-  const inputLine = `${i18n.inputLabel()}(${i18n.calendarLabel(result.calendarIsLunar, result.leapMonth)}): ${result.inputDate} ${result.inputTime} ${result.tzName}`;
+  const calLabel = i18n.calendarLabel(result.calendarIsLunar, result.leapMonth);
+  const lmt = result.lmtInfo;
+  const lmtShort = lmt ? `${lmt.correctionSeconds > 0 ? '+' : ''}${lmt.correctionSeconds}s${lmt.locationLabel ? ` ${lmt.locationLabel}` : ''}` : null;
 
-  let convertedSolarLine: string | null = null;
-  if (result.convertedSolar) {
-    convertedSolarLine = `${i18n.convertedSolarLabel()}: ${result.convertedSolar} ${result.inputTime} ${result.tzName}`;
-  }
-
-  let convertedLunarLine: string | null = null;
-  if (result.convertedLunar) {
-    const l = result.convertedLunar;
-    const suffix = l.isLeap ? i18n.leapSuffix() : '';
-    convertedLunarLine = `${i18n.convertedLunarLabel()}: ${String(l.year).padStart(4, '0')}-${String(l.month).padStart(2, '0')}-${String(l.day).padStart(2, '0')}${suffix}`;
-  }
-
-  const genderLine = `${i18n.genderLabel()}: ${i18n.genderValue(result.gender)}`;
+  const parts: string[] = [];
+  if (name) parts.push(name);
+  parts.push(
+    `${calLabel} ${result.inputDate} ${result.inputTime}`,
+    i18n.genderValue(result.gender),
+    result.tzName,
+  );
+  if (lmtShort) parts.push(`LMT ${lmtShort}`);
 
   return (
     <div className="result-dashboard">
       <section className="section">
         <h2>{i18n.title()}</h2>
-        <ul className="header-info">
-          <li>{inputLine}</li>
-          {convertedSolarLine && <li>{convertedSolarLine}</li>}
-          {convertedLunarLine && <li>{convertedLunarLine}</li>}
-          <li>{genderLine}</li>
-          {result.lmtInfo && (
-            <li>
-              {i18n.localMeanTimeLabel()}: {result.lmtInfo.correctionSeconds > 0 ? '+' : ''}{result.lmtInfo.correctionSeconds}s
-              {result.lmtInfo.locationLabel && ` (${result.lmtInfo.locationLabel})`}
-            </li>
-          )}
-        </ul>
+        <p className="profile-summary">{parts.join('  ·  ')}</p>
       </section>
 
       <PillarTable result={result} i18n={i18n} />

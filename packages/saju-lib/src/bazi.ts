@@ -13,6 +13,7 @@ import type {
   StrengthClass,
   StrengthVerdict,
   TenGod,
+  YongshinResult,
 } from './types.js';
 
 const HIDDEN_STEMS: readonly (readonly number[])[] = [
@@ -678,4 +679,59 @@ export function assessStrength(dayStem: number, pillars: Pillar[]): StrengthResu
     total,
     verdict,
   };
+}
+
+// ── 용신 (Use God / Yongshin) — 억부용신법 ──
+
+function elementGeneratedBy(element: Element): Element {
+  const map: Record<Element, Element> = {
+    Wood: 'Water', Fire: 'Wood', Earth: 'Fire', Metal: 'Earth', Water: 'Metal',
+  };
+  return map[element];
+}
+
+function elementControlledBy(element: Element): Element {
+  const map: Record<Element, Element> = {
+    Wood: 'Metal', Fire: 'Water', Earth: 'Wood', Metal: 'Fire', Water: 'Earth',
+  };
+  return map[element];
+}
+
+export function determineYongshin(dayStem: number, verdict: StrengthVerdict): YongshinResult {
+  const dayEl = stemElement(dayStem);
+
+  const same = dayEl;                          // 비겁(比劫) — same element
+  const output = elementGenerates(dayEl);      // 식상(食傷) — day generates
+  const wealth = elementControls(dayEl);       // 재성(財星) — day controls
+  const resource = elementGeneratedBy(dayEl);  // 인성(印星) — generates day
+  const officer = elementControlledBy(dayEl);  // 관성(官星) — controls day
+
+  if (verdict === 'Strong') {
+    // 신강 → 억(抑): drain/control the strong day master
+    return {
+      yongshin: output,    // 식상 — gently drains day master
+      heeshin: wealth,     // 재성 — further drains
+      gishin: same,        // 비겁 — adds same element (worst)
+      gushin: resource,    // 인성 — strengthens (harmful)
+      method: 'suppress',
+    };
+  } else if (verdict === 'Weak') {
+    // 신약 → 부(扶): support the weak day master
+    return {
+      yongshin: resource,  // 인성 — generates/strengthens day master
+      heeshin: same,       // 비겁 — same element supports
+      gishin: officer,     // 관성 — controls day (worst)
+      gushin: wealth,      // 재성 — drains energy (harmful)
+      method: 'support',
+    };
+  } else {
+    // 중화 → mild support preferred
+    return {
+      yongshin: resource,
+      heeshin: same,
+      gishin: officer,
+      gushin: wealth,
+      method: 'support',
+    };
+  }
 }

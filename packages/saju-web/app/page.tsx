@@ -7,6 +7,7 @@ import { calculate, type SajuRequest, type SajuResult, type Lang } from 'saju-li
 
 export default function Home() {
   const [result, setResult] = useState<SajuResult | null>(null);
+  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<Lang>('Ko');
@@ -15,6 +16,7 @@ export default function Home() {
     setError(null);
     const formLang = formData.lang === 'en' ? 'En' : 'Ko';
     setLang(formLang as Lang);
+    setName((formData.name as string) ?? '');
     try {
       const req = {
         date: formData.date,
@@ -58,7 +60,7 @@ export default function Home() {
           <p>{error}</p>
         </div>
       )}
-      {result && !loading && <ResultDashboard result={result} lang={lang} />}
+      {result && !loading && <ResultDashboard result={result} lang={lang} name={name} />}
     </>
   );
 }

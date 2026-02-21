@@ -8,26 +8,75 @@ interface Props { result: SajuResult; i18n: I18n }
 
 export default function StrengthSection({ result, i18n }: Props) {
   const s: StrengthResult = result.strength;
+  const y = result.yongshin;
   const stageBonus = s.stageClass === 'Strong' ? 2 : s.stageClass === 'Weak' ? -2 : 0;
   const supportTotal = s.supportStems * 2 + s.supportHidden;
   const drainTotal = s.drainStems * 2 + s.drainHidden;
 
-  const lines = [
-    `${i18n.monthStageLabel()}: ${i18n.stageLabel(s.stageIndex)} (${i18n.strengthClassLabel(s.stageClass as StrengthClass)})`,
-    `${i18n.rootLabel()}: ${s.rootCount} / ${i18n.supportLabel()}(${i18n.stemsLabel()} ${s.supportStems}\u00B7${i18n.hiddenStemsHeading()} ${s.supportHidden}) / ${i18n.drainLabel()}(${i18n.stemsLabel()} ${s.drainStems}\u00B7${i18n.hiddenStemsHeading()} ${s.drainHidden})`,
-    `${i18n.scoreLabel()}: ${s.total} (${i18n.basisLabel()} ${i18n.monthStageLabel()} ${stageBonus} + ${i18n.rootLabel()} ${s.rootCount} + ${i18n.supportLabel()} ${supportTotal} - ${i18n.drainLabel()} ${drainTotal})`,
-    `${i18n.verdictLabel()}: ${i18n.strengthVerdictLabel(s.verdict)}`,
-  ];
+  const elementClass = (el: string) => `element-${el.toLowerCase()}`;
+
+  const verdictClass = s.verdict === 'Strong' ? 'verdict-strong' : s.verdict === 'Weak' ? 'verdict-weak' : 'verdict-neutral';
 
   return (
     <section className="section">
       <h3>{i18n.strengthHeading()}</h3>
-      <div className="info-list">
-        {lines.map((line, idx) => (
-          <div key={idx} className="info-row">
-            <span className="info-value">{line}</span>
-          </div>
-        ))}
+
+      <div className="strength-summary">
+        <div className={`verdict-badge ${verdictClass}`}>
+          {i18n.strengthVerdictLabel(s.verdict)}
+        </div>
+        <div className="strength-score">
+          <span className="score-number">{s.total > 0 ? '+' : ''}{s.total}</span>
+          <span className="score-unit">{i18n.scoreLabel()}</span>
+        </div>
+      </div>
+
+      <div className="strength-details">
+        <div className="strength-row">
+          <span className="strength-label">{i18n.monthStageLabel()}</span>
+          <span className="strength-value">{i18n.stageLabel(s.stageIndex)} ({i18n.strengthClassLabel(s.stageClass as StrengthClass)}) {stageBonus > 0 ? `+${stageBonus}` : stageBonus}</span>
+        </div>
+        <div className="strength-row">
+          <span className="strength-label">{i18n.rootLabel()}</span>
+          <span className="strength-value">{s.rootCount}</span>
+        </div>
+        <div className="strength-row">
+          <span className="strength-label">{i18n.supportLabel()}</span>
+          <span className="strength-value strength-positive">+{supportTotal} <span className="strength-detail">({i18n.stemsLabel()} {s.supportStems} + {i18n.hiddenStemsHeading()} {s.supportHidden})</span></span>
+        </div>
+        <div className="strength-row">
+          <span className="strength-label">{i18n.drainLabel()}</span>
+          <span className="strength-value strength-negative">-{drainTotal} <span className="strength-detail">({i18n.stemsLabel()} {s.drainStems} + {i18n.hiddenStemsHeading()} {s.drainHidden})</span></span>
+        </div>
+      </div>
+
+      <h3 style={{ marginTop: 'var(--space-5)' }}>{i18n.yongshinHeading()}</h3>
+      <p className="yongshin-method">{i18n.yongshinMethodLabel(y.method)}</p>
+      <div className="yongshin-grid">
+        <div className="yongshin-card yongshin-good">
+          <span className="yongshin-label">{i18n.yongshinLabel()}</span>
+          <span className={`yongshin-element pt-card ${elementClass(y.yongshin)}`}>
+            {i18n.elementLabel(y.yongshin)}
+          </span>
+        </div>
+        <div className="yongshin-card yongshin-good">
+          <span className="yongshin-label">{i18n.heeshinLabel()}</span>
+          <span className={`yongshin-element pt-card ${elementClass(y.heeshin)}`}>
+            {i18n.elementLabel(y.heeshin)}
+          </span>
+        </div>
+        <div className="yongshin-card yongshin-bad">
+          <span className="yongshin-label">{i18n.gishinLabel()}</span>
+          <span className={`yongshin-element pt-card ${elementClass(y.gishin)}`}>
+            {i18n.elementLabel(y.gishin)}
+          </span>
+        </div>
+        <div className="yongshin-card yongshin-bad">
+          <span className="yongshin-label">{i18n.gushinLabel()}</span>
+          <span className={`yongshin-element pt-card ${elementClass(y.gushin)}`}>
+            {i18n.elementLabel(y.gushin)}
+          </span>
+        </div>
       </div>
     </section>
   );

@@ -233,9 +233,44 @@ form {
     background: var(--primary);
 }
 
-.header-info { list-style: none; }
-.header-info li { padding: 0.2rem 0; font-size: 0.95rem; }
-.header-info li::before { content: "\2022 "; color: var(--text-muted); }
+/* Profile summary */
+.profile-summary {
+    font-size: 0.9rem; color: var(--text-muted); line-height: 1.6;
+}
+
+/* Strength section redesign */
+.strength-summary {
+    display: flex; align-items: center; gap: var(--space-4);
+    margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4);
+    background: var(--bg); border-radius: var(--radius-md);
+}
+.verdict-badge {
+    font-size: var(--text-md); font-weight: 700;
+    padding: 0.35rem 1rem; border-radius: 20px;
+    white-space: nowrap;
+}
+.verdict-strong { background: var(--fire-bg); color: var(--fire-text); border: 1px solid var(--fire-border); }
+.verdict-weak { background: var(--water-bg); color: var(--water-text); border: 1px solid var(--water-border); }
+.verdict-neutral { background: var(--earth-bg); color: var(--earth-text); border: 1px solid var(--earth-border); }
+.strength-score { display: flex; align-items: baseline; gap: 0.3rem; }
+.score-number { font-size: 1.5rem; font-weight: 700; }
+.score-unit { font-size: var(--text-sm); color: var(--text-muted); }
+.strength-details {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2);
+}
+.strength-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.4rem 0.75rem; border-radius: var(--radius-sm);
+    background: var(--bg); font-size: 0.9rem;
+}
+.strength-label { font-weight: 600; color: var(--text-muted); }
+.strength-value { font-weight: 600; }
+.strength-positive { color: var(--wood-text); }
+.strength-negative { color: var(--fire-text); }
+.strength-detail { font-weight: 400; font-size: var(--text-xs); color: var(--text-muted); }
+@media (max-width: 640px) {
+    .strength-details { grid-template-columns: 1fr; }
+}
 
 /* ===== 2. Pillar Table readability ===== */
 .pillar-table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; }
@@ -296,6 +331,28 @@ form {
 .info-label { font-weight: 600; white-space: nowrap; min-width: 5rem; }
 .info-label::after { content: ":"; }
 .info-value { flex: 1; }
+
+/* ===== Yongshin (용신) ===== */
+.yongshin-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3);
+    margin-top: var(--space-3);
+}
+.yongshin-card {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+    padding: var(--space-3); border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+.yongshin-good { border-left: 3px solid var(--wood-border); }
+.yongshin-bad { border-left: 3px solid var(--fire-border); }
+.yongshin-label { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+.yongshin-element { font-size: var(--text-md); min-width: 3rem; text-align: center; }
+.yongshin-method {
+    font-size: var(--text-sm); color: var(--text-muted);
+    margin-top: var(--space-3); text-align: center;
+}
+@media (max-width: 640px) {
+    .yongshin-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* ===== Elements section ===== */
 .elements-section { display: grid; grid-template-columns: 1fr 200px; gap: var(--space-6); align-items: center; }

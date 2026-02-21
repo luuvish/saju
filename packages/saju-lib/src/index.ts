@@ -9,6 +9,7 @@ export { I18n } from './i18n.js';
 export type { Lang, PillarKind } from './i18n.js';
 export { calculate } from './service.js';
 export type { CalendarType, SajuRequest, SajuResult } from './service.js';
+export type { YongshinResult } from './types.js';
 export type { StrengthResult } from './bazi.js';
 export type { TimeZoneSpec } from './timezone.js';
 export type { DaewonItem, YearLuck, MonthLuck, MonthlyLuck } from './luck.js';

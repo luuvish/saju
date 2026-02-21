@@ -21,6 +21,7 @@ import type {
   ShinsalEntry,
   SolarTerm,
   StemInteraction,
+  YongshinResult,
 } from './types.js';
 import type { StrengthResult } from './bazi.js';
 import type { DaewonItem, MonthlyLuck, YearLuck } from './luck.js';
@@ -61,6 +62,7 @@ export interface SajuResult {
   hourPillar: Pillar;
 
   strength: StrengthResult;
+  yongshin: YongshinResult;
   stemInteractions: StemInteraction[];
   branchInteractions: BranchInteraction[];
   shinsalEntries: ShinsalEntry[];
@@ -227,6 +229,7 @@ export function calculate(req: SajuRequest): SajuResult {
 
   const fourPillars = [yearPillar, monthPillar, dayPillar, hourPillar];
   const strength = bazi.assessStrength(dayStem, fourPillars);
+  const yongshinResult = bazi.determineYongshin(dayStem, strength.verdict);
   const stemInteractions = bazi.findStemInteractions(fourPillars);
   const branchInteractions = bazi.findBranchInteractions(fourPillars);
   const shinsalEntries = bazi.findShinsal(fourPillars);
@@ -246,6 +249,7 @@ export function calculate(req: SajuRequest): SajuResult {
     dayPillar,
     hourPillar,
     strength,
+    yongshin: yongshinResult,
     stemInteractions,
     branchInteractions,
     shinsalEntries,

@@ -95,6 +95,14 @@ export interface LunarDate {
   isLeap: boolean;
 }
 
+export interface YongshinResult {
+  yongshin: Element;     // 용신(用神) — most needed element
+  heeshin: Element;      // 희신(喜神) — second helpful
+  gishin: Element;       // 기신(忌神) — most harmful element
+  gushin: Element;       // 구신(仇神) — second harmful
+  method: 'suppress' | 'support'; // 억부법: suppress=신강, support=신약
+}
+
 export interface LmtInfo {
   longitude: number;
   stdMeridian: number;

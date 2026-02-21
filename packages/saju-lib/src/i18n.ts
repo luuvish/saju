@@ -227,6 +227,19 @@ export class I18n {
     return map[this.lang][verdict];
   }
 
+  yongshinHeading(): string { return this.lang === 'Ko' ? '용신(用神)' : 'Use God (Yongshin)'; }
+  yongshinLabel(): string { return this.lang === 'Ko' ? '용신(用神)' : 'Use God'; }
+  heeshinLabel(): string { return this.lang === 'Ko' ? '희신(喜神)' : 'Joy God'; }
+  gishinLabel(): string { return this.lang === 'Ko' ? '기신(忌神)' : 'Jealous God'; }
+  gushinLabel(): string { return this.lang === 'Ko' ? '구신(仇神)' : 'Enemy God'; }
+  yongshinMethodLabel(method: 'suppress' | 'support'): string {
+    const map: Record<Lang, Record<string, string>> = {
+      Ko: { suppress: '억부법(抑扶法) — 신강: 억제 필요', support: '억부법(抑扶法) — 신약: 부조 필요' },
+      En: { suppress: 'Suppress method — Strong: needs restraint', support: 'Support method — Weak: needs aid' },
+    };
+    return map[this.lang][method];
+  }
+
   scoreLabel(): string { return this.lang === 'Ko' ? '점수' : 'Score'; }
   basisLabel(): string { return this.lang === 'Ko' ? '기준' : 'Basis'; }
   verdictLabel(): string { return this.lang === 'Ko' ? '판정' : 'Verdict'; }
