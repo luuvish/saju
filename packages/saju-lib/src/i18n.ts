@@ -59,6 +59,42 @@ const SHINSAL_NAMES_EN = [
   'Six Harm (六害殺)', 'Canopy (華蓋殺)', 'Robbery (劫殺)', 'Disaster (災殺)', 'Heaven Kill (天殺)',
 ];
 
+// ── 레이블 상수 (메서드 호출 시 객체 재생성 방지) ──
+
+const TEN_GOD_LABELS: Record<Lang, Record<TenGod, string>> = {
+  Ko: {
+    BiGyeon: '비견(比肩)', GeopJae: '겁재(劫財)', SikShin: '식신(食神)', SangGwan: '상관(傷官)',
+    PyeonJae: '편재(偏財)', JeongJae: '정재(正財)', ChilSal: '편관(偏官)', JeongGwan: '정관(正官)',
+    PyeonIn: '편인(偏印)', JeongIn: '정인(正印)',
+  },
+  En: {
+    BiGyeon: 'Companion (比肩)', GeopJae: 'Rob Wealth (劫財)', SikShin: 'Eating God (食神)',
+    SangGwan: 'Hurting Officer (傷官)', PyeonJae: 'Indirect Wealth (偏財)', JeongJae: 'Direct Wealth (正財)',
+    ChilSal: 'Indirect Officer (偏官)', JeongGwan: 'Direct Officer (正官)',
+    PyeonIn: 'Indirect Resource (偏印)', JeongIn: 'Direct Resource (正印)',
+  },
+};
+
+const SHINSAL_KIND_LABELS: Record<Lang, Record<ShinsalKind, string>> = {
+  Ko: {
+    DoHwaSal: '도화살(桃花殺)', CheonEulGwiIn: '천을귀인(天乙貴人)', YeokMaSal: '역마살(驛馬殺)',
+    MunChangGwiIn: '문창귀인(文昌貴人)', HakDangGwiIn: '학당귀인(學堂貴人)', CheonDeokGwiIn: '천덕귀인(天德貴人)',
+    WolDeokGwiIn: '월덕귀인(月德貴人)', YangInSal: '양인살(羊刃殺)', GongMang: '공망(空亡)',
+    BaekHoSal: '백호살(白虎殺)', GoeGangSal: '괴강살(魁罡殺)', WonJinSal: '원진살(怨嗔殺)', GwiMunGwanSal: '귀문관살(鬼門關殺)',
+  },
+  En: {
+    DoHwaSal: 'Peach Blossom (桃花殺)', CheonEulGwiIn: 'Heavenly Noble (天乙貴人)', YeokMaSal: 'Travel Horse (驛馬殺)',
+    MunChangGwiIn: 'Literary Star (文昌貴人)', HakDangGwiIn: 'Academic Star (學堂貴人)', CheonDeokGwiIn: 'Heavenly Virtue (天德貴人)',
+    WolDeokGwiIn: 'Monthly Virtue (月德貴人)', YangInSal: 'Blade (羊刃殺)', GongMang: 'Void (空亡)',
+    BaekHoSal: 'White Tiger (白虎殺)', GoeGangSal: 'Kuigang (魁罡殺)', WonJinSal: 'Grudge (怨嗔殺)', GwiMunGwanSal: 'Ghost Gate (鬼門關殺)',
+  },
+};
+
+const BRANCH_RELATION_LABELS: Record<Lang, Record<BranchRelationType, string>> = {
+  Ko: { YukHap: '육합(六合)', Chung: '충(沖)', Hyung: '형(刑)', Pa: '파(破)', Hae: '해(害)', BangHap: '방합(方合)', SamHap: '삼합(三合)' },
+  En: { YukHap: 'Six Combine (六合)', Chung: 'Clash (沖)', Hyung: 'Punishment (刑)', Pa: 'Break (破)', Hae: 'Harm (害)', BangHap: 'Directional (方合)', SamHap: 'Triple (三合)' },
+};
+
 /**
  * 다국어 레이블 제공 클래스.
  * 사주 관련 모든 용어와 UI 텍스트를 Lang에 따라 반환한다.
@@ -244,20 +280,7 @@ export class I18n {
 
   /** 십성 레이블 (한자 포함) */
   tenGodLabel(god: TenGod): string {
-    const map: Record<Lang, Record<TenGod, string>> = {
-      Ko: {
-        BiGyeon: '비견(比肩)', GeopJae: '겁재(劫財)', SikShin: '식신(食神)', SangGwan: '상관(傷官)',
-        PyeonJae: '편재(偏財)', JeongJae: '정재(正財)', ChilSal: '편관(偏官)', JeongGwan: '정관(正官)',
-        PyeonIn: '편인(偏印)', JeongIn: '정인(正印)',
-      },
-      En: {
-        BiGyeon: 'Companion (比肩)', GeopJae: 'Rob Wealth (劫財)', SikShin: 'Eating God (食神)',
-        SangGwan: 'Hurting Officer (傷官)', PyeonJae: 'Indirect Wealth (偏財)', JeongJae: 'Direct Wealth (正財)',
-        ChilSal: 'Indirect Officer (偏官)', JeongGwan: 'Direct Officer (正官)',
-        PyeonIn: 'Indirect Resource (偏印)', JeongIn: 'Direct Resource (正印)',
-      },
-    };
-    return map[this.lang][god];
+    return TEN_GOD_LABELS[this.lang][god];
   }
 
   // ── 12운성·12신살 ──
@@ -359,32 +382,14 @@ export class I18n {
 
   /** 지지 관계 레이블 (육합/충/형/파/해/방합/삼합) */
   branchRelationLabel(rel: BranchRelationType): string {
-    const map: Record<Lang, Record<BranchRelationType, string>> = {
-      Ko: { YukHap: '육합(六合)', Chung: '충(沖)', Hyung: '형(刑)', Pa: '파(破)', Hae: '해(害)', BangHap: '방합(方合)', SamHap: '삼합(三合)' },
-      En: { YukHap: 'Six Combine (六合)', Chung: 'Clash (沖)', Hyung: 'Punishment (刑)', Pa: 'Break (破)', Hae: 'Harm (害)', BangHap: 'Directional (方合)', SamHap: 'Triple (三合)' },
-    };
-    return map[this.lang][rel];
+    return BRANCH_RELATION_LABELS[this.lang][rel];
   }
 
   // ── 주요 신살 ──
 
   /** 주요 신살 종류별 레이블 */
   shinsalKindLabel(kind: ShinsalKind): string {
-    const map: Record<Lang, Record<ShinsalKind, string>> = {
-      Ko: {
-        DoHwaSal: '도화살(桃花殺)', CheonEulGwiIn: '천을귀인(天乙貴人)', YeokMaSal: '역마살(驛馬殺)',
-        MunChangGwiIn: '문창귀인(文昌貴人)', HakDangGwiIn: '학당귀인(學堂貴人)', CheonDeokGwiIn: '천덕귀인(天德貴人)',
-        WolDeokGwiIn: '월덕귀인(月德貴人)', YangInSal: '양인살(羊刃殺)', GongMang: '공망(空亡)',
-        BaekHoSal: '백호살(白虎殺)', GoeGangSal: '괴강살(魁罡殺)', WonJinSal: '원진살(怨嗔殺)', GwiMunGwanSal: '귀문관살(鬼門關殺)',
-      },
-      En: {
-        DoHwaSal: 'Peach Blossom (桃花殺)', CheonEulGwiIn: 'Heavenly Noble (天乙貴人)', YeokMaSal: 'Travel Horse (驛馬殺)',
-        MunChangGwiIn: 'Literary Star (文昌貴人)', HakDangGwiIn: 'Academic Star (學堂貴人)', CheonDeokGwiIn: 'Heavenly Virtue (天德貴人)',
-        WolDeokGwiIn: 'Monthly Virtue (月德貴人)', YangInSal: 'Blade (羊刃殺)', GongMang: 'Void (空亡)',
-        BaekHoSal: 'White Tiger (白虎殺)', GoeGangSal: 'Kuigang (魁罡殺)', WonJinSal: 'Grudge (怨嗔殺)', GwiMunGwanSal: 'Ghost Gate (鬼門關殺)',
-      },
-    };
-    return map[this.lang][kind];
+    return SHINSAL_KIND_LABELS[this.lang][kind];
   }
 
   /** 기둥 위치 단축 레이블 (년/월/일/시) */

@@ -138,6 +138,9 @@ export function computeSolarTerms(year: number): SolarTerm[] {
     prevUnwrapped = lon;
   }
 
+  if (results.length !== 24) {
+    throw new Error(`expected 24 solar terms for year ${year}, got ${results.length}`);
+  }
   return results;
 }
 

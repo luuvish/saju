@@ -7,11 +7,7 @@
  */
 
 import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc.js';
-import timezone from 'dayjs/plugin/timezone.js';
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
+// dayjs utc/timezone 플러그인은 timezone.ts에서 이미 등록됨
 
 import * as astro from './astro.js';
 import * as bazi from './bazi.js';
@@ -168,6 +164,16 @@ interface DateResolution {
 function resolveDate(req: SajuRequest): DateResolution {
   const dateParts = req.date.split('-').map(Number);
   const [inputYear, inputMonth, inputDay] = dateParts;
+
+  if (isNaN(inputYear) || isNaN(inputMonth) || isNaN(inputDay)) {
+    throw new Error('date must be valid YYYY-MM-DD format');
+  }
+  if (inputMonth < 1 || inputMonth > 12) {
+    throw new Error('month must be 1-12');
+  }
+  if (inputDay < 1 || inputDay > 31) {
+    throw new Error('day must be 1-31');
+  }
 
   if (req.calendar === 'Lunar' && (inputYear < 1900 || inputYear > 2099)) {
     throw new Error('음력 변환은 1900-2099년 범위만 지원합니다');

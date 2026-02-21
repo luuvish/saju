@@ -38,6 +38,14 @@ export function twelveShinsalIndex(yearBranch: number, branch: number): number {
   return (branch + 12 - start) % 12;
 }
 
+/** 지지 배열에서 target과 일치하는 위치를 PillarPosition 배열로 반환한다 */
+function matchBranch(branches: number[], target: number, exclude?: number): PillarPosition[] {
+  const POS: PillarPosition[] = ['Year', 'Month', 'Day', 'Hour'];
+  return [0, 1, 2, 3]
+    .filter((i) => i !== exclude && branches[i] === target)
+    .map((i) => POS[i]);
+}
+
 // ── 주요 신살(神殺) 검출 ──
 
 /**
@@ -149,15 +157,14 @@ export function findShinsal(pillars: Pillar[]): ShinsalEntry[] {
 
   const entries: ShinsalEntry[] = [];
 
+  /** 신살 추가 헬퍼: foundAt이 비어있지 않으면 entries에 추가 */
+  function add(kind: ShinsalEntry['kind'], foundAt: PillarPosition[], basis: PillarPosition) {
+    if (foundAt.length > 0) entries.push({ kind, foundAt, basis });
+  }
+
   // 도화살 (연지/일지 기준)
   for (const basisIdx of [0, 2]) {
-    const target = dohwaBranch(branches[basisIdx]);
-    const foundAt = [0, 1, 2, 3]
-      .filter((i) => i !== basisIdx && branches[i] === target)
-      .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'DoHwaSal', foundAt, basis: POS[basisIdx] });
-    }
+    add('DoHwaSal', matchBranch(branches, dohwaBranch(branches[basisIdx]), basisIdx), POS[basisIdx]);
   }
 
   // 천을귀인 (일간 기준)
@@ -166,54 +173,25 @@ export function findShinsal(pillars: Pillar[]): ShinsalEntry[] {
     const foundAt = [0, 1, 2, 3]
       .filter((i) => targets.includes(branches[i]))
       .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'CheonEulGwiIn', foundAt, basis: 'Day' });
-    }
+    add('CheonEulGwiIn', foundAt, 'Day');
   }
 
   // 역마살 (연지/일지 기준)
   for (const basisIdx of [0, 2]) {
-    const target = yeokmaBranch(branches[basisIdx]);
-    const foundAt = [0, 1, 2, 3]
-      .filter((i) => i !== basisIdx && branches[i] === target)
-      .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'YeokMaSal', foundAt, basis: POS[basisIdx] });
-    }
+    add('YeokMaSal', matchBranch(branches, yeokmaBranch(branches[basisIdx]), basisIdx), POS[basisIdx]);
   }
 
   // 문창귀인 (일간 기준)
-  {
-    const target = munchangBranch(dayStem);
-    const foundAt = [0, 1, 2, 3]
-      .filter((i) => branches[i] === target)
-      .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'MunChangGwiIn', foundAt, basis: 'Day' });
-    }
-  }
+  add('MunChangGwiIn', matchBranch(branches, munchangBranch(dayStem)), 'Day');
 
   // 학당귀인 (일간 기준)
-  {
-    const target = hakdangBranch(dayStem);
-    const foundAt = [0, 1, 2, 3]
-      .filter((i) => branches[i] === target)
-      .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'HakDangGwiIn', foundAt, basis: 'Day' });
-    }
-  }
+  add('HakDangGwiIn', matchBranch(branches, hakdangBranch(dayStem)), 'Day');
 
   // 천덕귀인 (월지 기준)
   {
     const target = cheondeokBranch(monthBranch);
     if (target !== null) {
-      const foundAt = [0, 1, 2, 3]
-        .filter((i) => branches[i] === target)
-        .map((i) => POS[i]);
-      if (foundAt.length > 0) {
-        entries.push({ kind: 'CheonDeokGwiIn', foundAt, basis: 'Month' });
-      }
+      add('CheonDeokGwiIn', matchBranch(branches, target), 'Month');
     }
   }
 
@@ -224,9 +202,7 @@ export function findShinsal(pillars: Pillar[]): ShinsalEntry[] {
       const foundAt = [0, 1, 2, 3]
         .filter((i) => stems[i] === targetStem)
         .map((i) => POS[i]);
-      if (foundAt.length > 0) {
-        entries.push({ kind: 'WolDeokGwiIn', foundAt, basis: 'Month' });
-      }
+      add('WolDeokGwiIn', foundAt, 'Month');
     }
   }
 
@@ -234,12 +210,7 @@ export function findShinsal(pillars: Pillar[]): ShinsalEntry[] {
   {
     const target = yanginBranch(dayStem);
     if (target !== null) {
-      const foundAt = [0, 1, 2, 3]
-        .filter((i) => branches[i] === target)
-        .map((i) => POS[i]);
-      if (foundAt.length > 0) {
-        entries.push({ kind: 'YangInSal', foundAt, basis: 'Day' });
-      }
+      add('YangInSal', matchBranch(branches, target), 'Day');
     }
   }
 
@@ -249,9 +220,7 @@ export function findShinsal(pillars: Pillar[]): ShinsalEntry[] {
     const foundAt = [0, 1, 2, 3]
       .filter((i) => i !== 2 && (branches[i] === gm[0] || branches[i] === gm[1]))
       .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'GongMang', foundAt, basis: 'Day' });
-    }
+    add('GongMang', foundAt, 'Day');
   }
 
   // 괴강살 (일주)
@@ -263,36 +232,20 @@ export function findShinsal(pillars: Pillar[]): ShinsalEntry[] {
   {
     const target = baekhoBranch(yearBranch);
     if (target !== null) {
-      const foundAt = [0, 1, 2, 3]
-        .filter((i) => i !== 0 && branches[i] === target)
-        .map((i) => POS[i]);
-      if (foundAt.length > 0) {
-        entries.push({ kind: 'BaekHoSal', foundAt, basis: 'Year' });
-      }
+      add('BaekHoSal', matchBranch(branches, target, 0), 'Year');
     }
   }
 
   // 원진살 (연지/일지 기준)
   for (const basisIdx of [0, 2]) {
-    const target = wonjinBranch(branches[basisIdx]);
-    const foundAt = [0, 1, 2, 3]
-      .filter((i) => i !== basisIdx && branches[i] === target)
-      .map((i) => POS[i]);
-    if (foundAt.length > 0) {
-      entries.push({ kind: 'WonJinSal', foundAt, basis: POS[basisIdx] });
-    }
+    add('WonJinSal', matchBranch(branches, wonjinBranch(branches[basisIdx]), basisIdx), POS[basisIdx]);
   }
 
   // 귀문관살 (연지/일지 기준)
   for (const basisIdx of [0, 2]) {
     const target = gwimunBranch(branches[basisIdx]);
     if (target !== null) {
-      const foundAt = [0, 1, 2, 3]
-        .filter((i) => i !== basisIdx && branches[i] === target)
-        .map((i) => POS[i]);
-      if (foundAt.length > 0) {
-        entries.push({ kind: 'GwiMunGwanSal', foundAt, basis: POS[basisIdx] });
-      }
+      add('GwiMunGwanSal', matchBranch(branches, target, basisIdx), POS[basisIdx]);
     }
   }
 

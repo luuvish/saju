@@ -6,6 +6,7 @@
  */
 'use client';
 
+import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';
 import { bazi, astro } from 'saju-lib';
 import type { I18n } from 'saju-lib';
@@ -26,7 +27,11 @@ function kindLabel(i18n: I18n, kind: PillarKind): string {
 export default function PillarTable({ result, i18n }: Props) {
   const ds = result.dayPillar.stem;
   const yb = result.yearPillar.branch;
-  const nowJd = astro.jdFromDatetime(new Date());
+  const [nowJd, setNowJd] = useState(0);
+
+  useEffect(() => {
+    setNowJd(astro.jdFromDatetime(new Date()));
+  }, []);
 
   // 현재 시점의 세운·월운 기둥 탐색
   const currentYear = result.yearlyLuck.find((y) => nowJd >= y.startJd && nowJd < y.endJd);

@@ -12,14 +12,13 @@ import timezone from 'dayjs/plugin/timezone.js';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-/** 시간대 명세: IANA 이름 또는 고정 UTC 오프셋 */
-export interface TimeZoneSpec {
-  type: 'fixed' | 'named';
-  /** 고정 오프셋 초 (type='fixed'일 때 사용, 예: +09:00 → 32400) */
-  offsetSeconds?: number;
-  /** IANA 시간대명 (type='named'일 때 사용, 예: 'Asia/Seoul') */
-  name?: string;
-}
+/**
+ * 시간대 명세: IANA 이름 또는 고정 UTC 오프셋.
+ * 구별된 유니온(discriminated union)으로 각 variant에 필요한 필드만 보유한다.
+ */
+export type TimeZoneSpec =
+  | { type: 'fixed'; offsetSeconds: number }
+  | { type: 'named'; name: string };
 
 /**
  * 시간대 문자열을 파싱하여 TimeZoneSpec을 반환한다.
@@ -80,8 +79,8 @@ function parseFixedOffset(input: string): number | null {
  * @returns IANA 이름 또는 '+09:00' 형식 문자열
  */
 export function tzName(spec: TimeZoneSpec): string {
-  if (spec.type === 'named') return spec.name!;
-  const total = spec.offsetSeconds!;
+  if (spec.type === 'named') return spec.name;
+  const total = spec.offsetSeconds;
   const sign = total >= 0 ? '+' : '-';
   const abs = Math.abs(total);
   const h = Math.floor(abs / 3600);
@@ -99,9 +98,9 @@ export function tzName(spec: TimeZoneSpec): string {
 export function localize(spec: TimeZoneSpec, dateStr: string, timeStr: string): dayjs.Dayjs {
   const naive = `${dateStr} ${timeStr}`;
   if (spec.type === 'named') {
-    return dayjs.tz(naive, spec.name!);
+    return dayjs.tz(naive, spec.name);
   }
-  return dayjs.utc(naive).subtract(spec.offsetSeconds!, 'second');
+  return dayjs.utc(naive).subtract(spec.offsetSeconds, 'second');
 }
 
 /**
@@ -113,9 +112,9 @@ export function localize(spec: TimeZoneSpec, dateStr: string, timeStr: string): 
 export function toLocal(spec: TimeZoneSpec, utcDate: dayjs.Dayjs | Date): dayjs.Dayjs {
   const d = utcDate instanceof Date ? dayjs.utc(utcDate) : utcDate;
   if (spec.type === 'named') {
-    return d.tz(spec.name!);
+    return d.tz(spec.name);
   }
-  return d.utcOffset(spec.offsetSeconds! / 60);
+  return d.utcOffset(spec.offsetSeconds / 60);
 }
 
 /**

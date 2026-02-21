@@ -6,6 +6,7 @@
  */
 'use client';
 
+import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';
 import { bazi } from 'saju-lib';
 import type { I18n } from 'saju-lib';
@@ -41,7 +42,11 @@ interface Props { result: SajuResult; i18n: I18n }
 export default function DaewonTimeline({ result, i18n }: Props) {
   const ds = result.dayPillar.stem;
   const heading = `${i18n.daewonHeading()} (${i18n.directionLabel(result.daewonDirection)} , ${i18n.startLabel()} ${i18n.formatAge(result.daewonStartMonths, false)})`;
-  const ageMonths = computeAgeMonths(result);
+  const [ageMonths, setAgeMonths] = useState<number | null>(null);
+
+  useEffect(() => {
+    setAgeMonths(computeAgeMonths(result));
+  }, [result]);
 
   return (
     <section className="section">

@@ -83,10 +83,17 @@ export async function POST(request: Request) {
       yearCount: body.yearCount ?? 3,
     };
 
-    const result = calculate(req);
-    return NextResponse.json(result);
+    try {
+      const result = calculate(req);
+      return NextResponse.json(result);
+    } catch (calcError: unknown) {
+      // calculate() 내부 에러는 서버 오류로 분류
+      const message = calcError instanceof Error ? calcError.message : 'Internal server error';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    // JSON 파싱 에러 등 요청 처리 에러는 클라이언트 오류
+    const message = error instanceof Error ? error.message : 'Bad request';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

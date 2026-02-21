@@ -92,6 +92,12 @@ const HIDDEN_STEM_RATIOS: readonly (readonly number[])[] = [
  */
 const CHANGSHENG_START: readonly number[] = [11, 6, 2, 9, 2, 9, 5, 0, 8, 3];
 
+/** 천간별 오행: 갑을=木, 병정=火, 무기=土, 경신=金, 임계=水 */
+const STEM_ELEMENTS: readonly Element[] = ['Wood', 'Wood', 'Fire', 'Fire', 'Earth', 'Earth', 'Metal', 'Metal', 'Water', 'Water'];
+
+/** 지지별 오행 */
+const BRANCH_ELEMENTS: readonly Element[] = ['Water', 'Earth', 'Wood', 'Wood', 'Earth', 'Fire', 'Fire', 'Earth', 'Metal', 'Metal', 'Earth', 'Water'];
+
 // ── 연주·월주·일주·시주 산출 ──
 
 /**
@@ -227,9 +233,8 @@ export function hourStemFromDay(dayStem: number, hourBranch: number): number {
  * @throws 범위 밖 인덱스
  */
 export function stemElement(stem: number): Element {
-  const elements: Element[] = ['Wood', 'Wood', 'Fire', 'Fire', 'Earth', 'Earth', 'Metal', 'Metal', 'Water', 'Water'];
   if (stem < 0 || stem > 9) throw new RangeError(`stem index must be 0-9, got ${stem}`);
-  return elements[stem];
+  return STEM_ELEMENTS[stem];
 }
 
 /**
@@ -238,9 +243,8 @@ export function stemElement(stem: number): Element {
  * @throws 범위 밖 인덱스
  */
 export function branchElement(branch: number): Element {
-  const elements: Element[] = ['Water', 'Earth', 'Wood', 'Wood', 'Earth', 'Fire', 'Fire', 'Earth', 'Metal', 'Metal', 'Earth', 'Water'];
   if (branch < 0 || branch > 11) throw new RangeError(`branch index must be 0-11, got ${branch}`);
-  return elements[branch];
+  return BRANCH_ELEMENTS[branch];
 }
 
 /**
@@ -353,6 +357,7 @@ export function hiddenStems(branch: number): readonly number[] {
  * @returns 일수 배열 (HIDDEN_STEMS 순서와 동일)
  */
 export function hiddenStemRatios(branch: number): readonly number[] {
+  if (branch < 0 || branch > 11) throw new RangeError(`branch index must be 0-11, got ${branch}`);
   return HIDDEN_STEM_RATIOS[branch];
 }
 
@@ -362,6 +367,7 @@ export function hiddenStemRatios(branch: number): readonly number[] {
  * @returns 정기 천간 인덱스
  */
 export function mainHiddenStem(branch: number): number {
+  if (branch < 0 || branch > 11) throw new RangeError(`branch index must be 0-11, got ${branch}`);
   return HIDDEN_STEMS[branch][0];
 }
 

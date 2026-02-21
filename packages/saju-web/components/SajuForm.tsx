@@ -7,7 +7,7 @@
  */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { location as loc } from 'saju-lib';
 
 const STORAGE_KEY = 'saju-form-state';
@@ -57,7 +57,7 @@ export default function SajuForm({ onSubmit, loading }: Props) {
   const locations = loc.locationList();
 
   /** 현재 폼 상태를 API 요청 페이로드로 변환한다 */
-  function buildPayload() {
+  const buildPayload = useCallback(() => {
     const useLmt = !!locationVal;
     return {
       name, date, time, gender, calendar,
@@ -72,15 +72,7 @@ export default function SajuForm({ onSubmit, loading }: Props) {
       yearCount: 10,
       lang: 'ko',
     };
-  }
-
-  /** 디바운스 후 자동 제출 */
-  function triggerUpdate() {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      onSubmit(buildPayload());
-    }, DEBOUNCE_MS);
-  }
+  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal]);
 
   // 필드 변경 시 자동 제출 + localStorage 저장
   const firstRender = useRef(true);
@@ -93,8 +85,11 @@ export default function SajuForm({ onSubmit, loading }: Props) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, date, time, gender, calendar, leapMonth, tz, locationVal }));
     } catch { /* quota exceeded or private browsing — ignore */ }
-    triggerUpdate();
-  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal, onSubmit]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onSubmit(buildPayload());
+    }, DEBOUNCE_MS);
+  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal, onSubmit, buildPayload]);
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(buildPayload()); }}>

@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';
 import { bazi, astro, luck } from 'saju-lib';
 import type { I18n, MonthlyLuck as MonthlyLuckType } from 'saju-lib';
@@ -70,7 +71,12 @@ interface Props { result: SajuResult; i18n: I18n }
 export default function MonthlyLuck({ result, i18n }: Props) {
   const ds = result.dayPillar.stem;
   const ml = result.monthlyLuck;
-  const nowJd = astro.jdFromDatetime(new Date());
+  const [nowJd, setNowJd] = useState(0);
+
+  useEffect(() => {
+    setNowJd(astro.jdFromDatetime(new Date()));
+  }, []);
+
   const items = buildMonthItems(ml, nowJd);
 
   return (

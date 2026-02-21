@@ -137,6 +137,20 @@ function addDays(d: Date, days: number): Date {
   return new Date(d.getTime() + days * 86400000);
 }
 
+/** 연도별 누적 일수 프리픽스 합 (지연 초기화) */
+let yearDaysPrefixSum: number[] | null = null;
+
+/** 프리픽스 합 배열을 반환한다. sums[i] = LUNAR_MIN_YEAR부터 (LUNAR_MIN_YEAR + i - 1)년까지의 총 일수 */
+function getYearDaysPrefixSum(): number[] {
+  if (yearDaysPrefixSum) return yearDaysPrefixSum;
+  const sums: number[] = [0];
+  for (let y = LUNAR_MIN_YEAR; y <= LUNAR_MAX_YEAR; y++) {
+    sums.push(sums[sums.length - 1] + lunarYearDays(y));
+  }
+  yearDaysPrefixSum = sums;
+  return sums;
+}
+
 /**
  * 음력 날짜 → 양력 Date 변환.
  *
@@ -170,11 +184,9 @@ export function lunarToSolar(
     throw new Error(`lunar day must be 1-${maxDay}`);
   }
 
-  // 1900-01-31부터의 누적 일수 계산
-  let offset = 0;
-  for (let y = LUNAR_MIN_YEAR; y < year; y++) {
-    offset += lunarYearDays(y);
-  }
+  // 1900-01-31부터의 누적 일수 계산 (프리픽스 합으로 O(1) 조회)
+  const prefixSums = getYearDaysPrefixSum();
+  let offset = prefixSums[year - LUNAR_MIN_YEAR];
   for (let m = 1; m < month; m++) {
     offset += lunarMonthDays(year, m);
     if (leapMonth === m) {
@@ -254,6 +266,9 @@ export function solarToLunar(date: Date): LunarDate {
   }
 
   const day = offset + 1;
+  if (day < 1 || day > 30) {
+    throw new Error('failed to determine lunar day from solar date');
+  }
   return { year, month, day, isLeap };
 }
 

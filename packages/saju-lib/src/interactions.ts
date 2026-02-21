@@ -37,6 +37,11 @@ export function stemHap(a: number, b: number): Element | null {
  * 천간충은 인덱스 차이가 6인 경우 (甲庚, 乙辛, 丙壬, 丁癸).
  * 단, 戊·己(인덱스 4, 5)는 충이 아님에 주의.
  */
+/**
+ * 두 천간의 충(沖) 여부를 판정한다.
+ * 천간충은 인덱스 차이가 6인 경우: 甲庚(0-6), 乙辛(1-7), 丙壬(2-8), 丁癸(3-9).
+ * 戊·己(4, 5)는 차이 6이 되는 짝이 범위 내에 없으므로 자연스럽게 제외된다.
+ */
 export function stemChung(a: number, b: number): boolean {
   if (a < 0 || a > 9 || b < 0 || b > 9) return false;
   return Math.abs(a - b) === 6;
@@ -135,24 +140,25 @@ function branchHae(a: number, b: number): boolean {
 /**
  * 방합(方合): 같은 방위의 세 지지 합 (계절합).
  * 寅卯辰=木(봄), 巳午未=火(여름), 申酉戌=金(가을), 亥子丑=水(겨울)
+ * 각 항목: [생성 오행, 사전 정렬된 지지 인덱스]
  */
-const BANG_HAP: [number, number, number, Element, readonly [number, number, number]][] = [
-  [2, 3, 4, 'Wood', [2, 3, 4]],
-  [5, 6, 7, 'Fire', [5, 6, 7]],
-  [8, 9, 10, 'Metal', [8, 9, 10]],
-  [11, 0, 1, 'Water', [0, 1, 11]],
+const BANG_HAP: [Element, readonly [number, number, number]][] = [
+  ['Wood', [2, 3, 4]],
+  ['Fire', [5, 6, 7]],
+  ['Metal', [8, 9, 10]],
+  ['Water', [0, 1, 11]],
 ];
 
 /**
  * 삼합(三合): 삼합국을 이루는 세 지지의 합.
  * 寅午戌=火局, 亥卯未=木局, 申子辰=水局, 巳酉丑=金局
- * 각 항목의 5번째 요소는 사전 정렬된 지지 인덱스 (런타임 sort 제거 목적)
+ * 각 항목: [생성 오행, 사전 정렬된 지지 인덱스]
  */
-const SAM_HAP: [number, number, number, Element, readonly [number, number, number]][] = [
-  [2, 6, 10, 'Fire', [2, 6, 10]],
-  [11, 3, 7, 'Wood', [3, 7, 11]],
-  [8, 0, 4, 'Water', [0, 4, 8]],
-  [5, 9, 1, 'Metal', [1, 5, 9]],
+const SAM_HAP: [Element, readonly [number, number, number]][] = [
+  ['Fire', [2, 6, 10]],
+  ['Wood', [3, 7, 11]],
+  ['Water', [0, 4, 8]],
+  ['Metal', [1, 5, 9]],
 ];
 
 /**
@@ -196,12 +202,12 @@ export function findBranchInteractions(pillars: Pillar[]): BranchInteraction[] {
     const triple = [branches[i], branches[j], branches[k]];
     const triSorted = [...triple].sort((a, b) => a - b);
 
-    for (const [,,,el, sorted] of BANG_HAP) {
+    for (const [el, sorted] of BANG_HAP) {
       if (triSorted[0] === sorted[0] && triSorted[1] === sorted[1] && triSorted[2] === sorted[2]) {
         result.push({ relation: 'BangHap', positions: [POS[i], POS[j], POS[k]], branches: [triple[0], triple[1], triple[2]], resultElement: el });
       }
     }
-    for (const [,,,el, sorted] of SAM_HAP) {
+    for (const [el, sorted] of SAM_HAP) {
       if (triSorted[0] === sorted[0] && triSorted[1] === sorted[1] && triSorted[2] === sorted[2]) {
         result.push({ relation: 'SamHap', positions: [POS[i], POS[j], POS[k]], branches: [triple[0], triple[1], triple[2]], resultElement: el });
       }

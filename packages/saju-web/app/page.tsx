@@ -11,6 +11,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<Lang>('Ko');
+  // setState 함수들은 React가 보장하는 안정적 참조이므로 deps가 비어 있어도 안전하다
   const handleSubmit = useCallback(async (formData: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
