@@ -5,7 +5,7 @@
  * 현재 월에 해당하는 월운을 하이라이트하며,
  * 현재 월이 초반부에 위치하면 전년도 월운을 앞에 채워 넣는다.
  */
-'use client';
+
 
 import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';

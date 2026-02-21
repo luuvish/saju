@@ -4,7 +4,7 @@
  * 도화살, 천을귀인, 역마살 등 13종의 주요 신살을
  * 그리드 레이아웃으로 표시한다. 신살이 없으면 렌더링하지 않는다.
  */
-'use client';
+
 
 import type { SajuResult } from 'saju-lib';
 import type { I18n } from 'saju-lib';

@@ -4,7 +4,7 @@
  * 매년의 세운(연운)을 가로 타임라인으로 표시한다.
  * 입춘(立春) 기준으로 올해에 해당하는 세운을 하이라이트한다.
  */
-'use client';
+
 
 import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';

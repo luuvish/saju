@@ -11,14 +11,14 @@
 pnpm install          # 의존성 설치
 pnpm build            # 전체 빌드 (saju-lib → saju-cli → saju-web)
 pnpm test             # Vitest 테스트 실행
-pnpm dev              # Next.js 개발 서버 (localhost:3000)
+pnpm dev              # Vite 개발 서버 (localhost:5173)
 ```
 
 ## Project Structure
 
 - `packages/saju-lib/` — 핵심 계산 라이브러리 (TypeScript, tsup)
 - `packages/saju-cli/` — Commander.js CLI (saju-lib 의존)
-- `packages/saju-web/` — Next.js 15 App Router 웹 앱 (saju-lib 의존)
+- `packages/saju-web/` — Vite + React SPA 웹 앱 (saju-lib 의존)
 
 ## Architecture Principles
 
@@ -55,9 +55,9 @@ pnpm dev              # Next.js 개발 서버 (localhost:3000)
 - `service.ts` — 통합 API (`calculate()`, `parseTime()`)
 
 ### Web Components (saju-web)
-- `components/utils.ts` — 공통 헬퍼 (elementCss, stemSub, branchSub)
+- `src/components/utils.ts` — 공통 헬퍼 (elementCss, stemSub, branchSub)
 - 각 컴포넌트는 `result: SajuResult`와 `i18n: I18n`을 props로 받음
-- `'use client'` 지시어 사용 (Next.js App Router)
+- `src/App.tsx` — 메인 앱 (layout + page 통합)
 
 ## Testing
 

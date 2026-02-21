@@ -4,7 +4,7 @@
  * 사주 네 기둥의 오행 분포를 바 차트와 도넛 차트로 시각화한다.
  * 목(木)·화(火)·토(土)·금(金)·수(水) 각각의 개수와 비율을 표시한다.
  */
-'use client';
+
 
 import type { SajuResult } from 'saju-lib';
 import { bazi } from 'saju-lib';

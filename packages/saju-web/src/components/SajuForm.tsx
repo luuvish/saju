@@ -5,7 +5,7 @@
  * 입력을 받는 폼. 필드 변경 시 자동으로 디바운스 후 계산을 트리거한다.
  * localStorage에 최근 입력값을 저장하여 재방문 시 복원한다.
  */
-'use client';
+
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { location as loc } from 'saju-lib';

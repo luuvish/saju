@@ -4,7 +4,7 @@
  * 10년 주기의 대운을 가로 타임라인으로 표시한다.
  * 현재 나이에 해당하는 대운을 하이라이트한다.
  */
-'use client';
+
 
 import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';

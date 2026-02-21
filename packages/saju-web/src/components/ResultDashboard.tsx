@@ -5,7 +5,7 @@
  * 통합 결과 화면을 렌더링한다. 입력 요약, 기둥 테이블, 관계,
  * 신살, 강약, 오행, 대운, 세운, 월운 섹션을 포함한다.
  */
-'use client';
+
 
 import { useMemo } from 'react';
 import type { SajuResult } from 'saju-lib';

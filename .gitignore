@@ -17,7 +17,7 @@ dist/
 # pnpm
 *.tgz
 
-# Next.js static export
+# Vite / Next.js static export
 out/
 
 # env

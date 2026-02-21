@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/saju-web/out
+          path: packages/saju-web/dist
 
   deploy:
     environment:

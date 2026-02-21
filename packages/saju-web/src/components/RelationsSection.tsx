@@ -4,7 +4,7 @@
  * 사주 네 기둥 간의 천간 합/충과 지지 육합/충/형/파/해/방합/삼합을
  * 리스트 형태로 표시한다. 관계가 없으면 섹션 자체를 렌더링하지 않는다.
  */
-'use client';
+
 
 import type { SajuResult } from 'saju-lib';
 import type { I18n } from 'saju-lib';

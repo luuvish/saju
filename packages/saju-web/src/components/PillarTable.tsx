@@ -4,7 +4,7 @@
  * 연주·월주·일주·시주와 현재 세운·월운을 한 테이블에 표시한다.
  * 천간·지지, 십성, 지장간, 12운성, 12신살을 행 단위로 렌더링한다.
  */
-'use client';
+
 
 import { useState, useEffect } from 'react';
 import type { SajuResult } from 'saju-lib';

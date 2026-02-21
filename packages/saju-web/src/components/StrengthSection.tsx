@@ -4,7 +4,7 @@
  * 일간의 강약 판정 결과(점수, 월지 운성, 통근, 지원/억제)와
  * 용신·희신·기신·구신을 카드 형태로 표시한다.
  */
-'use client';
+
 
 import type { SajuResult, StrengthResult } from 'saju-lib';
 import { strength as str } from 'saju-lib';
