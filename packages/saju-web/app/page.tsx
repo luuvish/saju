@@ -3,8 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import SajuForm from '@/components/SajuForm';
 import ResultDashboard from '@/components/ResultDashboard';
-import type { SajuResult } from 'saju-lib';
-import type { Lang } from 'saju-lib';
+import { calculate, type SajuRequest, type SajuResult, type Lang } from 'saju-lib';
 
 export default function Home() {
   const [result, setResult] = useState<SajuResult | null>(null);
@@ -19,20 +18,26 @@ export default function Home() {
     const formLang = formData.lang === 'en' ? 'En' : 'Ko';
     setLang(formLang as Lang);
     try {
-      const res = await fetch('/api/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Calculation failed');
-        setResult(null);
-      } else {
-        setResult(data as SajuResult);
-      }
-    } catch {
-      setError('Network error');
+      const req = {
+        date: formData.date,
+        time: formData.time,
+        calendar: formData.calendar ?? 'Solar',
+        leapMonth: formData.leapMonth ?? false,
+        gender: formData.gender ?? 'Male',
+        tz: formData.tz ?? 'Asia/Seoul',
+        useLmt: formData.useLmt ?? false,
+        longitude: formData.longitude ?? null,
+        location: formData.location ?? null,
+        daewonCount: formData.daewonCount ?? 10,
+        monthYear: formData.monthYear ?? null,
+        yearStart: formData.yearStart ?? null,
+        yearCount: formData.yearCount ?? 3,
+      } as SajuRequest;
+      const data = calculate(req);
+      setResult(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Calculation failed';
+      setError(message);
       setResult(null);
     } finally {
       setLoading(false);
