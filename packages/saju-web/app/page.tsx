@@ -34,7 +34,7 @@ export default function Home() {
         yearStart: formData.yearStart ?? null,
         yearCount: formData.yearCount ?? 3,
       };
-      const res = await fetch('/api/calculate', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
