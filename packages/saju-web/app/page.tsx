@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import SajuForm from '@/components/SajuForm';
 import ResultDashboard from '@/components/ResultDashboard';
-import { calculate, type SajuRequest, type SajuResult, type Lang } from 'saju-lib';
+import type { SajuResult, Lang } from 'saju-lib';
 
 export default function Home() {
   const [result, setResult] = useState<SajuResult | null>(null);
@@ -18,7 +18,7 @@ export default function Home() {
     setLang(formLang as Lang);
     setName((formData.name as string) ?? '');
     try {
-      const req = {
+      const body = {
         date: formData.date,
         time: formData.time,
         calendar: formData.calendar ?? 'Solar',
@@ -32,9 +32,17 @@ export default function Home() {
         monthYear: formData.monthYear ?? null,
         yearStart: formData.yearStart ?? null,
         yearCount: formData.yearCount ?? 3,
-      } as SajuRequest;
-      const data = calculate(req);
-      setResult(data);
+      };
+      const res = await fetch('/api/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? `서버 오류 (${res.status})`);
+      }
+      setResult(json as SajuResult);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '계산에 실패했습니다';
       setError(message);

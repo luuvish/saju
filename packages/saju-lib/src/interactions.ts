@@ -24,6 +24,7 @@ import type {
  * @returns 합인 경우 생성 오행, 아니면 null
  */
 export function stemHap(a: number, b: number): Element | null {
+  if (a < 0 || a > 9 || b < 0 || b > 9) return null;
   const [lo, hi] = a < b ? [a, b] : [b, a];
   const pairs: Record<string, Element> = {
     '0,5': 'Earth', '1,6': 'Metal', '2,7': 'Water', '3,8': 'Wood', '4,9': 'Fire',
@@ -37,6 +38,7 @@ export function stemHap(a: number, b: number): Element | null {
  * 단, 戊·己(인덱스 4, 5)는 충이 아님에 주의.
  */
 export function stemChung(a: number, b: number): boolean {
+  if (a < 0 || a > 9 || b < 0 || b > 9) return false;
   return Math.abs(a - b) === 6;
 }
 
@@ -134,16 +136,23 @@ function branchHae(a: number, b: number): boolean {
  * 방합(方合): 같은 방위의 세 지지 합 (계절합).
  * 寅卯辰=木(봄), 巳午未=火(여름), 申酉戌=金(가을), 亥子丑=水(겨울)
  */
-const BANG_HAP: [number, number, number, Element][] = [
-  [2, 3, 4, 'Wood'], [5, 6, 7, 'Fire'], [8, 9, 10, 'Metal'], [11, 0, 1, 'Water'],
+const BANG_HAP: [number, number, number, Element, readonly [number, number, number]][] = [
+  [2, 3, 4, 'Wood', [2, 3, 4]],
+  [5, 6, 7, 'Fire', [5, 6, 7]],
+  [8, 9, 10, 'Metal', [8, 9, 10]],
+  [11, 0, 1, 'Water', [0, 1, 11]],
 ];
 
 /**
  * 삼합(三合): 삼합국을 이루는 세 지지의 합.
  * 寅午戌=火局, 亥卯未=木局, 申子辰=水局, 巳酉丑=金局
+ * 각 항목의 5번째 요소는 사전 정렬된 지지 인덱스 (런타임 sort 제거 목적)
  */
-const SAM_HAP: [number, number, number, Element][] = [
-  [2, 6, 10, 'Fire'], [11, 3, 7, 'Wood'], [8, 0, 4, 'Water'], [5, 9, 1, 'Metal'],
+const SAM_HAP: [number, number, number, Element, readonly [number, number, number]][] = [
+  [2, 6, 10, 'Fire', [2, 6, 10]],
+  [11, 3, 7, 'Wood', [3, 7, 11]],
+  [8, 0, 4, 'Water', [0, 4, 8]],
+  [5, 9, 1, 'Metal', [1, 5, 9]],
 ];
 
 /**
@@ -187,15 +196,13 @@ export function findBranchInteractions(pillars: Pillar[]): BranchInteraction[] {
     const triple = [branches[i], branches[j], branches[k]];
     const triSorted = [...triple].sort((a, b) => a - b);
 
-    for (const [a, b, c, el] of BANG_HAP) {
-      const target = [a, b, c].sort((x, y) => x - y);
-      if (triSorted[0] === target[0] && triSorted[1] === target[1] && triSorted[2] === target[2]) {
+    for (const [,,,el, sorted] of BANG_HAP) {
+      if (triSorted[0] === sorted[0] && triSorted[1] === sorted[1] && triSorted[2] === sorted[2]) {
         result.push({ relation: 'BangHap', positions: [POS[i], POS[j], POS[k]], branches: [triple[0], triple[1], triple[2]], resultElement: el });
       }
     }
-    for (const [a, b, c, el] of SAM_HAP) {
-      const target = [a, b, c].sort((x, y) => x - y);
-      if (triSorted[0] === target[0] && triSorted[1] === target[1] && triSorted[2] === target[2]) {
+    for (const [,,,el, sorted] of SAM_HAP) {
+      if (triSorted[0] === sorted[0] && triSorted[1] === sorted[1] && triSorted[2] === sorted[2]) {
         result.push({ relation: 'SamHap', positions: [POS[i], POS[j], POS[k]], branches: [triple[0], triple[1], triple[2]], resultElement: el });
       }
     }

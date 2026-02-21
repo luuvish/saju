@@ -37,6 +37,24 @@ function validateRequest(body: Record<string, unknown>): string | null {
     }
   }
 
+  if (body.tz !== undefined) {
+    if (typeof body.tz !== 'string' || body.tz.trim() === '') {
+      return 'tz must be a non-empty string'
+    }
+  }
+
+  if (body.longitude !== undefined && body.longitude !== null) {
+    if (typeof body.longitude !== 'number' || body.longitude < -180 || body.longitude > 180) {
+      return 'longitude must be a number between -180 and 180'
+    }
+  }
+
+  if (body.location !== undefined && body.location !== null) {
+    if (typeof body.location !== 'string') {
+      return 'location must be a string'
+    }
+  }
+
   return null
 }
 

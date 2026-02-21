@@ -153,32 +153,22 @@ function parseTime(input: string): { hour: number; minute: number; second: numbe
   return { hour, minute, second };
 }
 
-/**
- * 사주팔자 통합 계산 함수.
- *
- * 계산 흐름:
- * 1. 입력 파싱 및 음양력 변환
- * 2. 시간대 적용 및 LMT 보정
- * 3. 절기 계산 → 연주/월주 결정
- * 4. 일진 계산 → 일주 결정 (23시 이후 익일 적용)
- * 5. 시주 결정
- * 6. 대운/세운/월운 산출
- * 7. 신강/신약, 용신, 합충형파해, 신살 분석
- *
- * @param req 계산 요청 파라미터
- * @returns 사주 계산 결과
- */
-export function calculate(req: SajuRequest): SajuResult {
-  const time = parseTime(req.time);
+// ── 내부 헬퍼 ──
 
-  if (req.calendar === 'Solar' && req.leapMonth) {
-    throw new Error('leap-month is only valid with calendar=lunar');
-  }
+/** 날짜 파싱 및 음양력 변환 결과 */
+interface DateResolution {
+  solarYear: number
+  solarMonth: number
+  solarDay: number
+  convertedSolar: string | null
+  convertedLunar: LunarDate | null
+}
 
+/** 1단계: 입력 날짜 파싱 및 음양력 변환 */
+function resolveDate(req: SajuRequest): DateResolution {
   const dateParts = req.date.split('-').map(Number);
   const [inputYear, inputMonth, inputDay] = dateParts;
 
-  // ── 사전 범위 검증 ──
   if (req.calendar === 'Lunar' && (inputYear < 1900 || inputYear > 2099)) {
     throw new Error('음력 변환은 1900-2099년 범위만 지원합니다');
   }
@@ -186,32 +176,49 @@ export function calculate(req: SajuRequest): SajuResult {
     throw new Error('양력 절기 계산은 1900-2100년 범위만 지원합니다');
   }
 
-  // ── 1단계: 음양력 변환 ──
-  let convertedSolar: string | null = null;
-  let convertedLunar: LunarDate | null = null;
-  let solarYear: number;
-  let solarMonth: number;
-  let solarDay: number;
-
   if (req.calendar === 'Solar') {
     const sDate = new Date(Date.UTC(inputYear, inputMonth - 1, inputDay));
     if (inputYear >= 0 && inputYear < 100) sDate.setUTCFullYear(inputYear);
-    convertedLunar = lunar.solarToLunar(sDate);
-    solarYear = inputYear;
-    solarMonth = inputMonth;
-    solarDay = inputDay;
+    return {
+      solarYear: inputYear,
+      solarMonth: inputMonth,
+      solarDay: inputDay,
+      convertedSolar: null,
+      convertedLunar: lunar.solarToLunar(sDate),
+    };
   } else {
     const sDate = lunar.lunarToSolar(inputYear, inputMonth, inputDay, req.leapMonth);
-    solarYear = sDate.getUTCFullYear();
-    solarMonth = sDate.getUTCMonth() + 1;
-    solarDay = sDate.getUTCDate();
+    const solarYear = sDate.getUTCFullYear();
+    const solarMonth = sDate.getUTCMonth() + 1;
+    const solarDay = sDate.getUTCDate();
     const yy = String(solarYear).padStart(4, '0');
     const mm = String(solarMonth).padStart(2, '0');
     const dd = String(solarDay).padStart(2, '0');
-    convertedSolar = `${yy}-${mm}-${dd}`;
+    return {
+      solarYear,
+      solarMonth,
+      solarDay,
+      convertedSolar: `${yy}-${mm}-${dd}`,
+      convertedLunar: null,
+    };
   }
+}
 
-  // ── 2단계: 시간대 및 LMT 보정 ──
+/** 시간대/LMT 보정 결과 */
+interface TimezoneResolution {
+  finalLocalDt: dayjs.Dayjs
+  lmtInfo: LmtInfo | null
+  tzSpec: tz.TimeZoneSpec
+}
+
+/** 2단계: 시간대 적용 및 LMT 보정 */
+function applyTimezone(
+  solarYear: number,
+  solarMonth: number,
+  solarDay: number,
+  time: { hour: number; minute: number; second: number },
+  req: SajuRequest,
+): TimezoneResolution {
   const solarDateStr = `${String(solarYear).padStart(4, '0')}-${String(solarMonth).padStart(2, '0')}-${String(solarDay).padStart(2, '0')}`;
   const timeStr = `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}:${String(time.second).padStart(2, '0')}`;
 
@@ -258,7 +265,24 @@ export function calculate(req: SajuRequest): SajuResult {
     };
   }
 
-  // ── 3단계: 연주·월주 결정 (절기 기준) ──
+  return { finalLocalDt, lmtInfo, tzSpec };
+}
+
+/** 4기둥 산출 결과 */
+interface PillarResolution {
+  yearPillar: Pillar
+  monthPillar: Pillar
+  dayPillar: Pillar
+  hourPillar: Pillar
+  birthJd: number
+  yearStem: number
+  termsPrev: SolarTerm[]
+  termsCurr: SolarTerm[]
+  termsNext: SolarTerm[]
+}
+
+/** 3~5단계: 절기 기반 4기둥(연·월·일·시) 산출 */
+function computePillars(finalLocalDt: dayjs.Dayjs): PillarResolution {
   const utcDt = finalLocalDt.utc();
   const birthJd = astro.jdFromDatetime(utcDt.toDate());
 
@@ -267,24 +291,22 @@ export function calculate(req: SajuRequest): SajuResult {
   const termsCurr = astro.computeSolarTerms(year);
   const termsNext = astro.computeSolarTerms(year + 1);
 
-  // 입춘(立春) 기준 연주 결정: 입춘 이전이면 전년도
+  // 입춘(立春) 기준 연주 결정
   const lichunTerm = termsCurr.find((t) => t.def.key === 'lichun');
   if (!lichunTerm) throw new Error('failed to find lichun term');
-  const lichunJd = lichunTerm.jd;
-  const yearForPillar = birthJd >= lichunJd ? year : year - 1;
+  const yearForPillar = birthJd >= lichunTerm.jd ? year : year - 1;
   const [yearStem, yearBranch] = bazi.yearPillar(yearForPillar);
   const yearPillar: Pillar = { stem: yearStem, branch: yearBranch };
 
-  // 절기 경계 기준 월주 결정
+  // 월주 결정
   const monthBranch = bazi.monthBranchForBirth(birthJd, termsPrev, termsCurr);
   const monthStem = bazi.monthStemFromYear(yearStem, monthBranch);
   const monthPillar: Pillar = { stem: monthStem, branch: monthBranch };
 
-  // ── 4단계: 일주 결정 (23시 자시 경계 처리) ──
+  // 일주 결정 (23시 자시 경계 처리)
   const localHour = finalLocalDt.hour();
   const localMinute = finalLocalDt.minute();
 
-  // 23:00 이후는 다음날의 일주를 사용 (야자시 조기자시 처리)
   let adjustedYear = finalLocalDt.year();
   let adjustedMonth = finalLocalDt.month() + 1;
   let adjustedDay = finalLocalDt.date();
@@ -299,13 +321,36 @@ export function calculate(req: SajuRequest): SajuResult {
   const [dayStem, dayBranch] = bazi.dayPillarFromJdn(jdn);
   const dayPillar: Pillar = { stem: dayStem, branch: dayBranch };
 
-  // ── 5단계: 시주 결정 ──
+  // 시주 결정
   const hourBranch = bazi.hourBranchIndex(localHour, localMinute);
   const hourStem = bazi.hourStemFromDay(dayStem, hourBranch);
   const hourPillar: Pillar = { stem: hourStem, branch: hourBranch };
 
-  // ── 6단계: 운(運) 계산 ──
-  const direction = luck.daewonDirection(req.gender, yearStem);
+  return { yearPillar, monthPillar, dayPillar, hourPillar, birthJd, yearStem, termsPrev, termsCurr, termsNext };
+}
+
+/** 운(運) 계산 결과 */
+interface LuckResolution {
+  direction: Direction
+  startMonths: number
+  daewonItems: DaewonItem[]
+  yearlyLuckResult: YearLuck[]
+  monthlyLuckResult: luck.MonthlyLuck
+}
+
+/** 6단계: 대운/세운/월운 산출 */
+function computeLuck(
+  req: SajuRequest,
+  gender: Gender,
+  yearStem: number,
+  monthPillar: Pillar,
+  birthJd: number,
+  termsPrev: SolarTerm[],
+  termsCurr: SolarTerm[],
+  termsNext: SolarTerm[],
+  tzSpec: tz.TimeZoneSpec,
+): LuckResolution {
+  const direction = luck.daewonDirection(gender, yearStem);
   const startMonths = luck.daewonStartMonths(birthJd, termsPrev, termsCurr, termsNext, direction);
   if (startMonths === null) throw new Error('failed to find solar term for daewon start');
 
@@ -320,39 +365,94 @@ export function calculate(req: SajuRequest): SajuResult {
   const yearlyLuckResult = luck.yearlyLuck(yearStart, req.yearCount);
   const monthlyLuckResult = luck.monthlyLuck(monthYr);
 
-  // ── 7단계: 분석 (강약, 용신, 합충, 신살) ──
-  const fourPillars = [yearPillar, monthPillar, dayPillar, hourPillar];
+  return { direction, startMonths, daewonItems, yearlyLuckResult, monthlyLuckResult };
+}
+
+/** 분석 결과 */
+interface AnalysisResult {
+  strength: StrengthResult
+  yongshin: YongshinResult
+  stemInteractions: StemInteraction[]
+  branchInteractions: BranchInteraction[]
+  shinsalEntries: ShinsalEntry[]
+}
+
+/** 7단계: 신강/신약, 용신, 합충형파해, 신살 분석 */
+function analyze(fourPillars: Pillar[], dayStem: number): AnalysisResult {
   const strength = assessStrength(dayStem, fourPillars);
-  const yongshinResult = determineYongshin(dayStem, strength.verdict);
+  const yongshin = determineYongshin(dayStem, strength.verdict);
   const stemInteractions = findStemInteractions(fourPillars);
   const branchInteractions = findBranchInteractions(fourPillars);
   const shinsalEntries = findShinsal(fourPillars);
+  return { strength, yongshin, stemInteractions, branchInteractions, shinsalEntries };
+}
+
+/**
+ * 사주팔자 통합 계산 함수.
+ *
+ * 계산 흐름:
+ * 1. 입력 파싱 및 음양력 변환
+ * 2. 시간대 적용 및 LMT 보정
+ * 3. 절기 계산 → 연주/월주 결정
+ * 4. 일진 계산 → 일주 결정 (23시 이후 익일 적용)
+ * 5. 시주 결정
+ * 6. 대운/세운/월운 산출
+ * 7. 신강/신약, 용신, 합충형파해, 신살 분석
+ *
+ * @param req 계산 요청 파라미터
+ * @returns 사주 계산 결과
+ */
+export function calculate(req: SajuRequest): SajuResult {
+  const time = parseTime(req.time);
+
+  if (req.calendar === 'Solar' && req.leapMonth) {
+    throw new Error('leap-month is only valid with calendar=lunar');
+  }
+
+  // 1단계: 음양력 변환
+  const dateRes = resolveDate(req);
+
+  // 2단계: 시간대/LMT 보정
+  const tzRes = applyTimezone(dateRes.solarYear, dateRes.solarMonth, dateRes.solarDay, time, req);
+
+  // 3~5단계: 4기둥 산출
+  const pillars = computePillars(tzRes.finalLocalDt);
+
+  // 6단계: 운 계산
+  const luckRes = computeLuck(
+    req, req.gender, pillars.yearStem, pillars.monthPillar,
+    pillars.birthJd, pillars.termsPrev, pillars.termsCurr, pillars.termsNext, tzRes.tzSpec,
+  );
+
+  // 7단계: 분석
+  const fourPillars = [pillars.yearPillar, pillars.monthPillar, pillars.dayPillar, pillars.hourPillar];
+  const analysis = analyze(fourPillars, pillars.dayPillar.stem);
 
   return {
     inputDate: req.date,
     inputTime: req.time,
     calendarIsLunar: req.calendar === 'Lunar',
     leapMonth: req.leapMonth,
-    tzName: tz.tzName(tzSpec),
-    convertedSolar,
-    convertedLunar,
-    lmtInfo,
+    tzName: tz.tzName(tzRes.tzSpec),
+    convertedSolar: dateRes.convertedSolar,
+    convertedLunar: dateRes.convertedLunar,
+    lmtInfo: tzRes.lmtInfo,
     gender: req.gender,
-    yearPillar,
-    monthPillar,
-    dayPillar,
-    hourPillar,
-    strength,
-    yongshin: yongshinResult,
-    stemInteractions,
-    branchInteractions,
-    shinsalEntries,
-    daewonDirection: direction,
-    daewonStartMonths: startMonths,
-    daewonItems,
-    yearlyLuck: yearlyLuckResult,
-    monthlyLuck: monthlyLuckResult,
-    tzSpec,
-    solarTerms: termsCurr,
+    yearPillar: pillars.yearPillar,
+    monthPillar: pillars.monthPillar,
+    dayPillar: pillars.dayPillar,
+    hourPillar: pillars.hourPillar,
+    strength: analysis.strength,
+    yongshin: analysis.yongshin,
+    stemInteractions: analysis.stemInteractions,
+    branchInteractions: analysis.branchInteractions,
+    shinsalEntries: analysis.shinsalEntries,
+    daewonDirection: luckRes.direction,
+    daewonStartMonths: luckRes.startMonths,
+    daewonItems: luckRes.daewonItems,
+    yearlyLuck: luckRes.yearlyLuckResult,
+    monthlyLuck: luckRes.monthlyLuckResult,
+    tzSpec: tzRes.tzSpec,
+    solarTerms: pillars.termsCurr,
   };
 }

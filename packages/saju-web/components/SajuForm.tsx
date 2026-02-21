@@ -94,8 +94,7 @@ export default function SajuForm({ onSubmit, loading }: Props) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, date, time, gender, calendar, leapMonth, tz, locationVal }));
     } catch { /* quota exceeded or private browsing — ignore */ }
     triggerUpdate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal]);
+  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal, onSubmit]);
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(buildPayload()); }}>

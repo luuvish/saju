@@ -23,11 +23,16 @@ import type {
   StrengthClass,
   TenGod,
 } from './types.js';
+import { remEuclid } from './utils.js';
 
 // 분리 모듈 re-export (하위 호환성 유지)
+/** @deprecated 직접 `interactions` 모듈에서 import 권장 */
 export { stemHap, stemChung, findStemInteractions, findBranchInteractions } from './interactions.js';
+/** @deprecated 직접 `shinsal` 모듈에서 import 권장 */
 export { shinsalStartBranch, twelveShinsalIndex, findShinsal } from './shinsal.js';
+/** @deprecated 직접 `strength` 모듈에서 import 권장 */
 export { assessStrength, determineYongshin, STRENGTH_WEIGHTS } from './strength.js';
+/** @deprecated 직접 `strength` 모듈에서 import 권장 */
 export type { StrengthResult } from './strength.js';
 
 // ── 지장간(地藏干) 테이블 ──
@@ -86,13 +91,6 @@ const HIDDEN_STEM_RATIOS: readonly (readonly number[])[] = [
  * 인덱스: 0=甲, 1=乙, ..., 9=癸
  */
 const CHANGSHENG_START: readonly number[] = [11, 6, 2, 9, 2, 9, 5, 0, 8, 3];
-
-// ── 유틸리티 ──
-
-/** 유클리드 나머지 (항상 양수 반환) */
-function remEuclid(a: number, b: number): number {
-  return ((a % b) + b) % b;
-}
 
 // ── 연주·월주·일주·시주 산출 ──
 
@@ -226,18 +224,22 @@ export function hourStemFromDay(dayStem: number, hourBranch: number): number {
  * 천간의 오행을 반환한다.
  * 갑을=木, 병정=火, 무기=土, 경신=金, 임계=水
  * @param stem 천간 인덱스 (0~9)
+ * @throws 범위 밖 인덱스
  */
 export function stemElement(stem: number): Element {
   const elements: Element[] = ['Wood', 'Wood', 'Fire', 'Fire', 'Earth', 'Earth', 'Metal', 'Metal', 'Water', 'Water'];
+  if (stem < 0 || stem > 9) throw new RangeError(`stem index must be 0-9, got ${stem}`);
   return elements[stem];
 }
 
 /**
  * 지지의 오행을 반환한다.
  * @param branch 지지 인덱스 (0~11)
+ * @throws 범위 밖 인덱스
  */
 export function branchElement(branch: number): Element {
   const elements: Element[] = ['Water', 'Earth', 'Wood', 'Wood', 'Earth', 'Fire', 'Fire', 'Earth', 'Metal', 'Metal', 'Earth', 'Water'];
+  if (branch < 0 || branch > 11) throw new RangeError(`branch index must be 0-11, got ${branch}`);
   return elements[branch];
 }
 
@@ -265,17 +267,23 @@ export function elementControls(element: Element): Element {
 
 /**
  * 천간의 음양을 반환한다.
+ * @param stem 천간 인덱스 (0~9)
  * @returns true=양(陽, 짝수 인덱스), false=음(陰, 홀수 인덱스)
+ * @throws 범위 밖 인덱스
  */
 export function stemPolarity(stem: number): boolean {
+  if (stem < 0 || stem > 9) throw new RangeError(`stem index must be 0-9, got ${stem}`);
   return stem % 2 === 0;
 }
 
 /**
  * 지지의 음양을 반환한다 (정기 지장간의 음양으로 판단).
+ * @param branch 지지 인덱스 (0~11)
  * @returns true=양(陽), false=음(陰)
+ * @throws 범위 밖 인덱스
  */
 export function branchPolarity(branch: number): boolean {
+  if (branch < 0 || branch > 11) throw new RangeError(`branch index must be 0-11, got ${branch}`);
   return stemPolarity(mainHiddenStem(branch));
 }
 
@@ -310,6 +318,8 @@ export function relation(day: Element, target: Element): Relation {
  * @returns 십성 식별자
  */
 export function tenGod(dayStem: number, targetStem: number): TenGod {
+  if (dayStem < 0 || dayStem > 9) throw new RangeError(`dayStem index must be 0-9, got ${dayStem}`);
+  if (targetStem < 0 || targetStem > 9) throw new RangeError(`targetStem index must be 0-9, got ${targetStem}`);
   const dayElement = stemElement(dayStem);
   const targetElement = stemElement(targetStem);
   const samePolarity = stemPolarity(dayStem) === stemPolarity(targetStem);
@@ -333,6 +343,7 @@ export function tenGod(dayStem: number, targetStem: number): TenGod {
  * @returns 천간 인덱스 배열 [정기, 여기, (중기)]
  */
 export function hiddenStems(branch: number): readonly number[] {
+  if (branch < 0 || branch > 11) throw new RangeError(`branch index must be 0-11, got ${branch}`);
   return HIDDEN_STEMS[branch];
 }
 

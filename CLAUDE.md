@@ -41,7 +41,7 @@ pnpm dev              # Next.js 개발 서버 (localhost:3000)
 - 지지(Branches): `number` 0-11 (子=0 ~ 亥=11)
 - 오행(Elements): `'Wood' | 'Fire' | 'Earth' | 'Metal' | 'Water'`
 - 성별(Gender): `'Male' | 'Female'`
-- 기둥위치(PillarPosition): `'year' | 'month' | 'day' | 'hour'`
+- 기둥위치(PillarPosition): `'Year' | 'Month' | 'Day' | 'Hour'`
 
 ### File Organization (saju-lib)
 - `types.ts` — 공유 타입/인터페이스 정의

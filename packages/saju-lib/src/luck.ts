@@ -9,6 +9,7 @@
 import { computeSolarTerms } from './astro.js';
 import { monthBranchFromTermKey, monthStemFromYear, yearPillar } from './bazi.js';
 import type { Direction, Gender, Pillar, SolarTerm } from './types.js';
+import { remEuclid } from './utils.js';
 
 /** 대운 항목: 시작 시기(개월)와 해당 기둥 */
 export interface DaewonItem {
@@ -50,9 +51,18 @@ export interface MonthlyLuck {
   months: MonthLuck[];
 }
 
-/** 유클리드 나머지 (항상 양수 반환) */
-function remEuclid(a: number, b: number): number {
-  return ((a % b) + b) % b;
+// ── 절기 캐시 ──
+
+const termsCache = new Map<number, SolarTerm[]>()
+
+/** 절기 계산 결과를 캐싱하여 반복 호출 시 재계산을 방지한다 */
+function getCachedTerms(year: number): SolarTerm[] {
+  let t = termsCache.get(year)
+  if (!t) {
+    t = computeSolarTerms(year)
+    termsCache.set(year, t)
+  }
+  return t
 }
 
 /**
@@ -177,8 +187,8 @@ export function yearlyLuck(startYear: number, count: number): YearLuck[] {
   const results: YearLuck[] = [];
   for (let idx = 0; idx < count; idx++) {
     const year = startYear + idx;
-    const termsCurr = computeSolarTerms(year);
-    const termsNext = computeSolarTerms(year + 1);
+    const termsCurr = getCachedTerms(year);
+    const termsNext = getCachedTerms(year + 1);
     const lichunCurr = termsCurr.find((t) => t.def.key === 'lichun');
     if (!lichunCurr) throw new Error('failed to find lichun for yearly luck');
     const lichunNext = termsNext.find((t) => t.def.key === 'lichun');
@@ -204,8 +214,8 @@ export function yearlyLuck(startYear: number, count: number): YearLuck[] {
  * @returns MonthlyLuck (연주 + 12개월 월운)
  */
 export function monthlyLuck(year: number): MonthlyLuck {
-  const termsCurr = computeSolarTerms(year);
-  const termsNext = computeSolarTerms(year + 1);
+  const termsCurr = getCachedTerms(year);
+  const termsNext = getCachedTerms(year + 1);
   const lichunCurr = termsCurr.find((t) => t.def.key === 'lichun');
   if (!lichunCurr) throw new Error('failed to find lichun term for monthly luck');
   const lichunNext = termsNext.find((t) => t.def.key === 'lichun');

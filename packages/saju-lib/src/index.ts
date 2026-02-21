@@ -16,12 +16,12 @@ export * as lunar from './lunar.js';
 export * as luck from './luck.js';
 export * as location from './location.js';
 export * as timezone from './timezone.js';
+export * as utils from './utils.js';
 export { I18n } from './i18n.js';
 export type { Lang, PillarKind } from './i18n.js';
 export { calculate } from './service.js';
 export type { CalendarType, SajuRequest, SajuResult } from './service.js';
-export type { YongshinResult } from './types.js';
-export { STRENGTH_WEIGHTS } from './strength.js';
+// 웹 컴포넌트에서 직접 import하는 타입 재수출
 export type { StrengthResult } from './strength.js';
-export type { TimeZoneSpec } from './timezone.js';
 export type { DaewonItem, YearLuck, MonthLuck, MonthlyLuck } from './luck.js';
+export type { TimeZoneSpec } from './timezone.js';

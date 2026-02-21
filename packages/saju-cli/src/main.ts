@@ -55,8 +55,9 @@ program
   .action((opts) => {
     try {
       run(opts);
-    } catch (err: any) {
-      console.error(`error: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`error: ${message}`);
       process.exit(1);
     }
   });
@@ -67,7 +68,26 @@ program.parse();
  * CLI 메인 실행 함수.
  * 커맨드라인 옵션을 SajuRequest로 변환 후 계산·출력한다.
  */
-function run(opts: any): void {
+/** CLI 옵션 타입 */
+interface CliOptions {
+  date: string
+  time: string
+  gender: string
+  calendar: string
+  leapMonth: boolean
+  tz: string
+  lang: string
+  daewonCount: string
+  monthYear?: string
+  yearStart?: string
+  yearCount: string
+  localMeanTime: boolean
+  longitude?: string
+  location?: string
+  showTerms: boolean
+}
+
+function run(opts: CliOptions): void {
   const lang: Lang = opts.lang === 'en' ? 'En' : 'Ko';
   const i18n = new I18n(lang);
 

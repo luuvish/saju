@@ -7,6 +7,7 @@
  */
 
 import type { LunarDate } from './types.js';
+import { remEuclid } from './utils.js';
 
 /** 지원 음력 최소 연도 */
 const LUNAR_MIN_YEAR = 1900;
@@ -68,11 +69,6 @@ const LUNAR_INFO: number[] = [
   // 2090-2099
   0x0e968, 0x0d520, 0x0daa0, 0x16aa6, 0x056d0, 0x04ae0, 0x0a9d4, 0x0a2d0, 0x0d150, 0x0f252,
 ];
-
-/** 유클리드 나머지 (항상 양수 반환) */
-function remEuclid(a: number, b: number): number {
-  return ((a % b) + b) % b;
-}
 
 /** 해당 연도의 LUNAR_INFO 엔트리를 반환한다 */
 function lunarInfo(year: number): number {
@@ -215,10 +211,8 @@ export function solarToLunar(date: Date): LunarDate {
   }
 
   let offset = daysBetween(base, date);
-  let totalDays = 0;
-  for (let y = LUNAR_MIN_YEAR; y <= LUNAR_MAX_YEAR; y++) {
-    totalDays += lunarYearDays(y);
-  }
+  const endDate = dateFromYmd(LUNAR_MAX_YEAR + 1, 2, 19);
+  const totalDays = daysBetween(base, endDate);
   if (offset >= totalDays) {
     throw new Error('solar date after supported lunar range');
   }
@@ -263,4 +257,3 @@ export function solarToLunar(date: Date): LunarDate {
   return { year, month, day, isLeap };
 }
 
-export { remEuclid };
