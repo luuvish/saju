@@ -20,11 +20,31 @@ function branchSub(i18n: I18n, branch: number): string {
   return `${bazi.branchPolarity(branch) ? '+' : '-'}${i18n.elementShortLabel(bazi.branchElement(branch))}`;
 }
 
+function computeAgeMonths(result: SajuResult): number | null {
+  // Determine solar birth date
+  let solarDateStr: string;
+  if (result.calendarIsLunar && result.convertedSolar) {
+    solarDateStr = result.convertedSolar;
+  } else {
+    solarDateStr = result.inputDate;
+  }
+  const parts = solarDateStr.split('-').map(Number);
+  if (parts.length < 3) return null;
+  const [birthY, birthM] = parts;
+
+  const now = new Date();
+  const nowY = now.getFullYear();
+  const nowM = now.getMonth() + 1;
+
+  return (nowY - birthY) * 12 + (nowM - birthM);
+}
+
 interface Props { result: SajuResult; i18n: I18n }
 
 export default function DaewonTimeline({ result, i18n }: Props) {
   const ds = result.dayPillar.stem;
   const heading = `${i18n.daewonHeading()} (${i18n.directionLabel(result.daewonDirection)} , ${i18n.startLabel()} ${i18n.formatAge(result.daewonStartMonths, false)})`;
+  const ageMonths = computeAgeMonths(result);
 
   return (
     <section className="section">
@@ -34,8 +54,11 @@ export default function DaewonTimeline({ result, i18n }: Props) {
           const p = item.pillar;
           const stemEl = bazi.stemElement(p.stem);
           const branchEl = bazi.branchElement(p.branch);
+          const isCurrent = ageMonths !== null
+            && ageMonths >= item.startMonths
+            && ageMonths < item.startMonths + 120;
           return (
-            <div key={idx} className="luck-card">
+            <div key={idx} className={`luck-card${isCurrent ? ' luck-current' : ''}`}>
               <div className="luck-age">{i18n.formatAge(item.startMonths, true)}</div>
               <div className="luck-god">{i18n.tenGodLabel(bazi.tenGod(ds, p.stem))}</div>
               <div className={`pt-card ${elementCss(stemEl)}`}>{i18n.stemLabel(p.stem)}</div>

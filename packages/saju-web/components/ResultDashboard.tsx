@@ -2,6 +2,7 @@
 
 import type { SajuResult } from 'saju-lib';
 import { I18n } from 'saju-lib';
+import type { Lang } from 'saju-lib';
 import PillarTable from './PillarTable';
 import ElementsChart from './ElementsChart';
 import StrengthSection from './StrengthSection';
@@ -11,10 +12,10 @@ import DaewonTimeline from './DaewonTimeline';
 import YearlyLuck from './YearlyLuck';
 import MonthlyLuck from './MonthlyLuck';
 
-interface Props { result: SajuResult }
+interface Props { result: SajuResult; lang: Lang }
 
-export default function ResultDashboard({ result }: Props) {
-  const i18n = new I18n('Ko');
+export default function ResultDashboard({ result, lang }: Props) {
+  const i18n = new I18n(lang);
 
   const inputLine = `${i18n.inputLabel()}(${i18n.calendarLabel(result.calendarIsLunar, result.leapMonth)}): ${result.inputDate} ${result.inputTime} ${result.tzName}`;
 

@@ -4,16 +4,20 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import SajuForm from '@/components/SajuForm';
 import ResultDashboard from '@/components/ResultDashboard';
 import type { SajuResult } from 'saju-lib';
+import type { Lang } from 'saju-lib';
 
 export default function Home() {
   const [result, setResult] = useState<SajuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lang, setLang] = useState<Lang>('Ko');
   const initialLoad = useRef(true);
 
   const handleSubmit = useCallback(async (formData: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
+    const formLang = formData.lang === 'en' ? 'En' : 'Ko';
+    setLang(formLang as Lang);
     try {
       const res = await fetch('/api/calculate', {
         method: 'POST',
@@ -45,13 +49,14 @@ export default function Home() {
         calendar: 'Solar',
         leapMonth: false,
         tz: 'Asia/Seoul',
-        useLmt: false,
+        useLmt: true,
         location: 'seoul',
         longitude: null,
         daewonCount: 10,
         monthYear: null,
         yearStart: null,
         yearCount: 10,
+        lang: 'ko',
       });
     }
   }, [handleSubmit]);
@@ -71,7 +76,7 @@ export default function Home() {
           <p>{error}</p>
         </div>
       )}
-      {result && !loading && <ResultDashboard result={result} />}
+      {result && !loading && <ResultDashboard result={result} lang={lang} />}
     </>
   );
 }
