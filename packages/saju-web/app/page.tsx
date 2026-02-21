@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import SajuForm from '@/components/SajuForm';
 import ResultDashboard from '@/components/ResultDashboard';
 import type { SajuResult } from 'saju-lib';
@@ -9,8 +9,9 @@ export default function Home() {
   const [result, setResult] = useState<SajuResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const initialLoad = useRef(true);
 
-  async function handleSubmit(formData: Record<string, unknown>) {
+  const handleSubmit = useCallback(async (formData: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
     try {
@@ -32,17 +33,45 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (initialLoad.current) {
+      initialLoad.current = false;
+      handleSubmit({
+        date: '2000-01-15',
+        time: '12:00',
+        gender: 'Male',
+        calendar: 'Solar',
+        leapMonth: false,
+        tz: 'Asia/Seoul',
+        useLmt: false,
+        location: 'seoul',
+        longitude: null,
+        daewonCount: 10,
+        monthYear: null,
+        yearStart: null,
+        yearCount: 10,
+      });
+    }
+  }, [handleSubmit]);
 
   return (
-    <div className="space-y-6">
+    <>
       <SajuForm onSubmit={handleSubmit} loading={loading} />
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
-          {error}
+      {loading && (
+        <div className="loading-indicator">
+          <div className="spinner" />
+          <span>Calculating...</span>
         </div>
       )}
-      {result && <ResultDashboard result={result} />}
-    </div>
+      {error && (
+        <div className="error-message">
+          <h3>Error</h3>
+          <p>{error}</p>
+        </div>
+      )}
+      {result && !loading && <ResultDashboard result={result} />}
+    </>
   );
 }

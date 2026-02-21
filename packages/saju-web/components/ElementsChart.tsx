@@ -2,53 +2,100 @@
 
 import type { SajuResult } from 'saju-lib';
 import { bazi } from 'saju-lib';
+import type { I18n } from 'saju-lib';
 import type { Element } from 'saju-lib';
 
 const ELEMENTS: Element[] = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
 
-const ELEMENT_LABELS: Record<Element, string> = {
-  Wood: '木', Fire: '火', Earth: '土', Metal: '金', Water: '水',
-};
+function elementCss(el: Element): string {
+  const map: Record<Element, string> = {
+    Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
+    Metal: 'element-metal', Water: 'element-water',
+  };
+  return map[el];
+}
 
-const ELEMENT_COLORS: Record<Element, string> = {
-  Wood: 'bg-green-400 dark:bg-green-600',
-  Fire: 'bg-red-400 dark:bg-red-600',
-  Earth: 'bg-yellow-400 dark:bg-yellow-600',
-  Metal: 'bg-gray-400 dark:bg-gray-500',
-  Water: 'bg-blue-400 dark:bg-blue-600',
-};
+interface Props { result: SajuResult; i18n: I18n }
 
-interface Props { result: SajuResult }
-
-export default function ElementsChart({ result }: Props) {
+export default function ElementsChart({ result, i18n }: Props) {
   const pillars = [result.yearPillar, result.monthPillar, result.dayPillar, result.hourPillar];
-  const counts: Record<Element, number> = { Wood: 0, Fire: 0, Earth: 0, Metal: 0, Water: 0 };
-
-  for (const p of pillars) {
-    counts[bazi.stemElement(p.stem)]++;
-    counts[bazi.branchElement(p.branch)]++;
-  }
-
-  const max = Math.max(...Object.values(counts), 1);
+  const counts = bazi.elementsCount(pillars);
+  const total = counts.reduce((a, b) => a + b, 0);
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-      <h2 className="text-lg font-semibold mb-4">Five Elements</h2>
-      <div className="space-y-3">
-        {ELEMENTS.map((el) => (
-          <div key={el} className="flex items-center gap-3">
-            <div className="w-8 text-center text-lg font-bold">{ELEMENT_LABELS[el]}</div>
-            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${ELEMENT_COLORS[el]} flex items-center justify-end pr-2`}
-                style={{ width: `${(counts[el] / max) * 100}%`, minWidth: counts[el] > 0 ? '2rem' : '0' }}
-              >
-                {counts[el] > 0 && <span className="text-xs font-bold text-white">{counts[el]}</span>}
+    <section className="section">
+      <h3>{i18n.elementsHeading()}</h3>
+      <div className="elements-section">
+        <div className="elements-bars">
+          {ELEMENTS.map((el, idx) => {
+            const pct = total > 0 ? Math.round((counts[idx] / total) * 100) : 0;
+            return (
+              <div key={el} className="element-bar-group">
+                <div className={`element-bar-label ${elementCss(el)}`}>
+                  {i18n.elementShortLabel(el)}
+                </div>
+                <div className="element-bar-track">
+                  <div
+                    className={`element-bar-fill ${elementCss(el)}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <div className="element-bar-count">{counts[idx]}</div>
               </div>
-            </div>
-          </div>
-        ))}
+            );
+          })}
+        </div>
+        <div className="chart-container">
+          <ElementDoughnut counts={counts} />
+        </div>
       </div>
-    </div>
+    </section>
+  );
+}
+
+function ElementDoughnut({ counts }: { counts: number[] }) {
+  const colors = ['#2e7d32', '#d32f2f', '#f9a825', '#bdbdbd', '#424242'];
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total === 0) return null;
+
+  const size = 180;
+  const cx = size / 2;
+  const cy = size / 2;
+  const outer = 80;
+  const inner = 45;
+
+  let cumAngle = -Math.PI / 2;
+  const paths = counts.map((count, idx) => {
+    if (count === 0) return null;
+    const angle = (count / total) * 2 * Math.PI;
+    const startAngle = cumAngle;
+    const endAngle = cumAngle + angle;
+    cumAngle = endAngle;
+
+    const largeArc = angle > Math.PI ? 1 : 0;
+    const x1o = cx + outer * Math.cos(startAngle);
+    const y1o = cy + outer * Math.sin(startAngle);
+    const x2o = cx + outer * Math.cos(endAngle);
+    const y2o = cy + outer * Math.sin(endAngle);
+    const x1i = cx + inner * Math.cos(endAngle);
+    const y1i = cy + inner * Math.sin(endAngle);
+    const x2i = cx + inner * Math.cos(startAngle);
+    const y2i = cy + inner * Math.sin(startAngle);
+
+    const d = [
+      `M ${x1o} ${y1o}`,
+      `A ${outer} ${outer} 0 ${largeArc} 1 ${x2o} ${y2o}`,
+      `L ${x1i} ${y1i}`,
+      `A ${inner} ${inner} 0 ${largeArc} 0 ${x2i} ${y2i}`,
+      'Z',
+    ].join(' ');
+
+    return <path key={idx} d={d} fill={colors[idx]} />;
+  });
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+      {paths}
+    </svg>
   );
 }

@@ -1,12 +1,11 @@
 'use client';
 
 import type { SajuResult } from 'saju-lib';
-import { I18n, bazi, astro } from 'saju-lib';
+import { bazi, astro } from 'saju-lib';
+import type { I18n } from 'saju-lib';
 import type { Element } from 'saju-lib';
 
-const i18n = new I18n('Ko');
-
-function elColor(el: Element): string {
+function elementCss(el: Element): string {
   const map: Record<Element, string> = {
     Wood: 'element-wood', Fire: 'element-fire', Earth: 'element-earth',
     Metal: 'element-metal', Water: 'element-water',
@@ -14,58 +13,43 @@ function elColor(el: Element): string {
   return map[el];
 }
 
-function formatJd(jd: number): string {
-  const d = astro.datetimeFromJd(jd);
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const mi = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${mm}-${dd} ${hh}:${mi}`;
+function stemSub(i18n: I18n, stem: number): string {
+  return `${bazi.stemPolarity(stem) ? '+' : '-'}${i18n.elementShortLabel(bazi.stemElement(stem))}`;
+}
+function branchSub(i18n: I18n, branch: number): string {
+  return `${bazi.branchPolarity(branch) ? '+' : '-'}${i18n.elementShortLabel(bazi.branchElement(branch))}`;
 }
 
-interface Props { result: SajuResult }
+interface Props { result: SajuResult; i18n: I18n }
 
-export default function MonthlyLuck({ result }: Props) {
-  const dayStem = result.dayPillar.stem;
+export default function MonthlyLuck({ result, i18n }: Props) {
+  const ds = result.dayPillar.stem;
   const ml = result.monthlyLuck;
+  const nowJd = astro.jdFromDatetime(new Date());
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-      <h2 className="text-lg font-semibold mb-2">
-        {i18n.monthlyLuckHeading(ml.year)}
-      </h2>
-      <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-        {i18n.yearLuckLabel()}: {i18n.pillarLabel(ml.yearPillar)}
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-2">
+    <section className="section">
+      <h3>{i18n.monthlyLuckHeading(ml.year)}</h3>
+      <div className="luck-timeline luck-compact">
         {ml.months.map((m, idx) => {
-          const stemEl = bazi.stemElement(m.pillar.stem);
-          const branchEl = bazi.branchElement(m.pillar.branch);
-          const stemGod = bazi.tenGod(dayStem, m.pillar.stem);
-          const branchGod = bazi.tenGod(dayStem, bazi.hiddenStems(m.pillar.branch)[0]);
-
+          const p = m.pillar;
+          const stemEl = bazi.stemElement(p.stem);
+          const branchEl = bazi.branchElement(p.branch);
+          const isCurrent = nowJd >= m.startJd && nowJd < m.endJd;
           return (
-            <div key={idx} className="flex-shrink-0 w-24 bg-white dark:bg-gray-800 rounded-lg p-2 text-center text-sm border border-gray-200 dark:border-gray-700">
-              <div className="text-xs text-gray-400 mb-1">{i18n.monthLabel(m.pillar.branch)}</div>
-              <div className={`text-lg font-bold ${elColor(stemEl)}`}>
-                {i18n.stemLabel(m.pillar.stem)}
-              </div>
-              <div className={`text-lg font-bold ${elColor(branchEl)}`}>
-                {i18n.branchLabel(m.pillar.branch)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-tight">
-                {i18n.tenGodLabel(stemGod)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
-                {i18n.tenGodLabel(branchGod)}
-              </div>
-              <div className="text-[10px] text-gray-400 mt-1 leading-tight">
-                {formatJd(m.startJd)}
-              </div>
+            <div key={idx} className={`luck-card${isCurrent ? ' luck-current' : ''}`}>
+              <div className="luck-age">{i18n.monthLabel(m.branch)}</div>
+              <div className="luck-god">{i18n.tenGodLabel(bazi.tenGod(ds, p.stem))}</div>
+              <div className={`pt-card ${elementCss(stemEl)}`}>{i18n.stemLabel(p.stem)}</div>
+              <div className="pt-sub">{stemSub(i18n, p.stem)}</div>
+              <div className={`pt-card ${elementCss(branchEl)}`}>{i18n.branchLabel(p.branch)}</div>
+              <div className="pt-sub">{branchSub(i18n, p.branch)}</div>
+              <div className="luck-god">{i18n.tenGodLabel(bazi.tenGodBranch(ds, p.branch))}</div>
+              <div className="luck-stage">{i18n.stageLabel(bazi.twelveStageIndex(ds, p.branch))}</div>
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

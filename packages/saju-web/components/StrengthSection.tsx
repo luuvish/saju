@@ -1,55 +1,34 @@
 'use client';
 
-import type { SajuResult } from 'saju-lib';
-import { I18n } from 'saju-lib';
+import type { SajuResult, StrengthResult } from 'saju-lib';
+import type { I18n } from 'saju-lib';
+import type { StrengthClass } from 'saju-lib';
 
-const i18n = new I18n('Ko');
+interface Props { result: SajuResult; i18n: I18n }
 
-interface Props { result: SajuResult }
+export default function StrengthSection({ result, i18n }: Props) {
+  const s: StrengthResult = result.strength;
+  const stageBonus = s.stageClass === 'Strong' ? 2 : s.stageClass === 'Weak' ? -2 : 0;
+  const supportTotal = s.supportStems * 2 + s.supportHidden;
+  const drainTotal = s.drainStems * 2 + s.drainHidden;
 
-export default function StrengthSection({ result }: Props) {
-  const s = result.strength;
-
-  const verdictColor =
-    s.verdict === 'Strong'
-      ? 'text-red-600 dark:text-red-400'
-      : s.verdict === 'Weak'
-        ? 'text-blue-600 dark:text-blue-400'
-        : 'text-green-600 dark:text-green-400';
+  const lines = [
+    `${i18n.monthStageLabel()}: ${i18n.stageLabel(s.stageIndex)} (${i18n.strengthClassLabel(s.stageClass as StrengthClass)})`,
+    `${i18n.rootLabel()}: ${s.rootCount} / ${i18n.supportLabel()}(${i18n.stemsLabel()} ${s.supportStems}\u00B7${i18n.hiddenStemsHeading()} ${s.supportHidden}) / ${i18n.drainLabel()}(${i18n.stemsLabel()} ${s.drainStems}\u00B7${i18n.hiddenStemsHeading()} ${s.drainHidden})`,
+    `${i18n.scoreLabel()}: ${s.total} (${i18n.basisLabel()} ${i18n.monthStageLabel()} ${stageBonus} + ${i18n.rootLabel()} ${s.rootCount} + ${i18n.supportLabel()} ${supportTotal} - ${i18n.drainLabel()} ${drainTotal})`,
+    `${i18n.verdictLabel()}: ${i18n.strengthVerdictLabel(s.verdict)}`,
+  ];
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-      <h2 className="text-lg font-semibold mb-4">{i18n.strengthHeading()}</h2>
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-500 dark:text-gray-400 text-sm">{i18n.verdictLabel()}:</span>
-          <span className={`text-2xl font-bold ${verdictColor}`}>
-            {i18n.strengthVerdictLabel(s.verdict)}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="bg-white dark:bg-gray-800 rounded p-2">
-            <div className="text-gray-500 dark:text-gray-400">{i18n.monthStageLabel()}</div>
-            <div>{i18n.stageLabel(s.stageIndex)} ({i18n.strengthClassLabel(s.stageClass)})</div>
+    <section className="section">
+      <h3>{i18n.strengthHeading()}</h3>
+      <div className="info-list">
+        {lines.map((line, idx) => (
+          <div key={idx} className="info-row">
+            <span className="info-value">{line}</span>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded p-2">
-            <div className="text-gray-500 dark:text-gray-400">{i18n.rootLabel()}</div>
-            <div>{s.rootCount}</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded p-2">
-            <div className="text-gray-500 dark:text-gray-400">{i18n.supportLabel()}</div>
-            <div>Stem {s.supportStems} / Hidden {s.supportHidden}</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded p-2">
-            <div className="text-gray-500 dark:text-gray-400">{i18n.drainLabel()}</div>
-            <div>Stem {s.drainStems} / Hidden {s.drainHidden}</div>
-          </div>
-        </div>
-        <div className="text-sm bg-white dark:bg-gray-800 rounded p-2">
-          <span className="text-gray-500 dark:text-gray-400">{i18n.scoreLabel()}: </span>
-          <span className="font-mono font-bold">{s.total}</span>
-        </div>
+        ))}
       </div>
-    </div>
+    </section>
   );
 }

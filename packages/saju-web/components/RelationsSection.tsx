@@ -1,70 +1,57 @@
 'use client';
 
 import type { SajuResult } from 'saju-lib';
-import { I18n } from 'saju-lib';
+import type { I18n } from 'saju-lib';
+import type { StemRelationType, BranchRelationType } from 'saju-lib';
 
-const i18n = new I18n('Ko');
+function interactionCss(rel: StemRelationType | BranchRelationType): string {
+  const map: Record<string, string> = {
+    Hap: 'interaction-hap', Chung: 'interaction-chung',
+    YukHap: 'interaction-yukhap', Hyung: 'interaction-hyung',
+    Pa: 'interaction-pa', Hae: 'interaction-hae',
+    BangHap: 'interaction-banghap', SamHap: 'interaction-samhap',
+  };
+  return map[rel] ?? '';
+}
 
-interface Props { result: SajuResult }
+interface Props { result: SajuResult; i18n: I18n }
 
-export default function RelationsSection({ result }: Props) {
+export default function RelationsSection({ result, i18n }: Props) {
   const { stemInteractions, branchInteractions } = result;
-
-  if (stemInteractions.length === 0 && branchInteractions.length === 0) {
-    return null;
-  }
+  if (stemInteractions.length === 0 && branchInteractions.length === 0) return null;
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-      <h2 className="text-lg font-semibold mb-4">{i18n.relationsHeading()}</h2>
-      <div className="space-y-4">
-        {stemInteractions.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Stem Interactions</h3>
-            <div className="space-y-1">
-              {stemInteractions.map((si, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 rounded p-2">
-                  <span className="font-medium">{i18n.stemRelationLabel(si.relation)}</span>
-                  <span className="text-gray-500">
-                    {i18n.stemLabel(si.stems[0])} - {i18n.stemLabel(si.stems[1])}
-                  </span>
-                  <span className="text-gray-400">
-                    ({si.positions[0]} - {si.positions[1]})
-                  </span>
-                  {si.resultElement && (
-                    <span className={`element-${si.resultElement.toLowerCase()}`}>
-                      [{si.resultElement}]
-                    </span>
-                  )}
-                </div>
-              ))}
+    <section className="section">
+      <h3>{i18n.relationsHeading()}</h3>
+      <div className="relations-list">
+        {stemInteractions.map((si, idx) => {
+          const posLabel = si.positions.map((p) => i18n.positionLabel(p)).join('-');
+          const detail = si.resultElement
+            ? `${i18n.stemLabel(si.stems[0])}-${i18n.stemLabel(si.stems[1])} \u2192 ${i18n.elementLabel(si.resultElement)}`
+            : `${i18n.stemLabel(si.stems[0])}-${i18n.stemLabel(si.stems[1])}`;
+          return (
+            <div key={`s${idx}`} className={`relation-item ${interactionCss(si.relation)}`}>
+              <span className="relation-type">{i18n.stemRelationLabel(si.relation)}</span>
+              <span className="relation-positions">{posLabel}</span>
+              <span>{detail}</span>
             </div>
-          </div>
-        )}
-        {branchInteractions.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Branch Interactions</h3>
-            <div className="space-y-1">
-              {branchInteractions.map((bi, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-sm bg-white dark:bg-gray-800 rounded p-2">
-                  <span className="font-medium">{i18n.branchRelationLabel(bi.relation)}</span>
-                  <span className="text-gray-500">
-                    {bi.branches.map((b) => i18n.branchLabel(b)).join(' - ')}
-                  </span>
-                  <span className="text-gray-400">
-                    ({bi.positions.join(' - ')})
-                  </span>
-                  {bi.resultElement && (
-                    <span className={`element-${bi.resultElement.toLowerCase()}`}>
-                      [{bi.resultElement}]
-                    </span>
-                  )}
-                </div>
-              ))}
+          );
+        })}
+        {branchInteractions.map((bi, idx) => {
+          const posLabel = bi.positions.map((p) => i18n.positionLabel(p)).join('-');
+          const branchStr = bi.branches.map((b) => i18n.branchLabel(b)).join('-');
+          const detail = bi.resultElement
+            ? `${branchStr} \u2192 ${i18n.elementLabel(bi.resultElement)}`
+            : branchStr;
+          return (
+            <div key={`b${idx}`} className={`relation-item ${interactionCss(bi.relation)}`}>
+              <span className="relation-type">{i18n.branchRelationLabel(bi.relation)}</span>
+              <span className="relation-positions">{posLabel}</span>
+              <span>{detail}</span>
             </div>
-          </div>
-        )}
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }

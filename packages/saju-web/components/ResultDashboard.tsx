@@ -1,6 +1,7 @@
 'use client';
 
 import type { SajuResult } from 'saju-lib';
+import { I18n } from 'saju-lib';
 import PillarTable from './PillarTable';
 import ElementsChart from './ElementsChart';
 import StrengthSection from './StrengthSection';
@@ -10,65 +11,53 @@ import DaewonTimeline from './DaewonTimeline';
 import YearlyLuck from './YearlyLuck';
 import MonthlyLuck from './MonthlyLuck';
 
-interface Props {
-  result: SajuResult;
-}
+interface Props { result: SajuResult }
 
 export default function ResultDashboard({ result }: Props) {
-  return (
-    <div className="space-y-6">
-      <HeaderInfo result={result} />
-      <PillarTable result={result} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ElementsChart result={result} />
-        <StrengthSection result={result} />
-      </div>
-      <RelationsSection result={result} />
-      <ShinsalSection result={result} />
-      <DaewonTimeline result={result} />
-      <YearlyLuck result={result} />
-      <MonthlyLuck result={result} />
-    </div>
-  );
-}
+  const i18n = new I18n('Ko');
 
-function HeaderInfo({ result }: Props) {
+  const inputLine = `${i18n.inputLabel()}(${i18n.calendarLabel(result.calendarIsLunar, result.leapMonth)}): ${result.inputDate} ${result.inputTime} ${result.tzName}`;
+
+  let convertedSolarLine: string | null = null;
+  if (result.convertedSolar) {
+    convertedSolarLine = `${i18n.convertedSolarLabel()}: ${result.convertedSolar} ${result.inputTime} ${result.tzName}`;
+  }
+
+  let convertedLunarLine: string | null = null;
+  if (result.convertedLunar) {
+    const l = result.convertedLunar;
+    const suffix = l.isLeap ? i18n.leapSuffix() : '';
+    convertedLunarLine = `${i18n.convertedLunarLabel()}: ${String(l.year).padStart(4, '0')}-${String(l.month).padStart(2, '0')}-${String(l.day).padStart(2, '0')}${suffix}`;
+  }
+
+  const genderLine = `${i18n.genderLabel()}: ${i18n.genderValue(result.gender)}`;
+
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-      <h2 className="text-lg font-semibold mb-2">Result</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
-        <div>
-          <span className="text-gray-500 dark:text-gray-400">Input: </span>
-          {result.calendarIsLunar ? 'Lunar' : 'Solar'} {result.inputDate} {result.inputTime}
-        </div>
-        <div>
-          <span className="text-gray-500 dark:text-gray-400">Timezone: </span>
-          {result.tzName}
-        </div>
-        <div>
-          <span className="text-gray-500 dark:text-gray-400">Gender: </span>
-          {result.gender}
-        </div>
-        {result.convertedSolar && (
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">Solar: </span>
-            {result.convertedSolar}
-          </div>
-        )}
-        {result.convertedLunar && (
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">Lunar: </span>
-            {result.convertedLunar.year}-{String(result.convertedLunar.month).padStart(2, '0')}-{String(result.convertedLunar.day).padStart(2, '0')}
-            {result.convertedLunar.isLeap ? ' (Leap)' : ''}
-          </div>
-        )}
-        {result.lmtInfo && (
-          <div>
-            <span className="text-gray-500 dark:text-gray-400">LMT: </span>
-            {result.lmtInfo.correctedLocal} ({result.lmtInfo.correctionSeconds > 0 ? '+' : ''}{result.lmtInfo.correctionSeconds}s)
-          </div>
-        )}
-      </div>
+    <div className="result-dashboard">
+      <section className="section">
+        <h2>{i18n.title()}</h2>
+        <ul className="header-info">
+          <li>{inputLine}</li>
+          {convertedSolarLine && <li>{convertedSolarLine}</li>}
+          {convertedLunarLine && <li>{convertedLunarLine}</li>}
+          <li>{genderLine}</li>
+          {result.lmtInfo && (
+            <li>
+              {i18n.localMeanTimeLabel()}: {result.lmtInfo.correctionSeconds > 0 ? '+' : ''}{result.lmtInfo.correctionSeconds}s
+              {result.lmtInfo.locationLabel && ` (${result.lmtInfo.locationLabel})`}
+            </li>
+          )}
+        </ul>
+      </section>
+
+      <PillarTable result={result} i18n={i18n} />
+      <RelationsSection result={result} i18n={i18n} />
+      <ShinsalSection result={result} i18n={i18n} />
+      <StrengthSection result={result} i18n={i18n} />
+      <ElementsChart result={result} i18n={i18n} />
+      <DaewonTimeline result={result} i18n={i18n} />
+      <YearlyLuck result={result} i18n={i18n} />
+      <MonthlyLuck result={result} i18n={i18n} />
     </div>
   );
 }
