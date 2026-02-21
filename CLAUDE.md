@@ -12,13 +12,24 @@ pnpm install          # 의존성 설치
 pnpm build            # 전체 빌드 (saju-lib → saju-cli → saju-web)
 pnpm test             # Vitest 테스트 실행
 pnpm dev              # Vite 개발 서버 (localhost:5173)
+pnpm preview          # 프로덕션 빌드 미리보기 (localhost:4173)
 ```
 
 ## Project Structure
 
-- `packages/saju-lib/` — 핵심 계산 라이브러리 (TypeScript, tsup)
-- `packages/saju-cli/` — Commander.js CLI (saju-lib 의존)
-- `packages/saju-web/` — Vite + React SPA 웹 앱 (saju-lib 의존)
+```
+packages/
+├── saju-lib/         핵심 계산 라이브러리 (TypeScript, tsup)
+├── saju-cli/         Commander.js CLI (saju-lib 의존)
+└── saju-web/         Vite + React SPA 웹 앱 (saju-lib 의존)
+    ├── index.html        Vite 엔트리 포인트
+    ├── vite.config.ts    Vite 설정 (base: '/saju/')
+    └── src/
+        ├── main.tsx      React 마운트
+        ├── App.tsx       메인 앱 (레이아웃 + 페이지 로직 통합)
+        ├── globals.css   전역 스타일
+        └── components/   UI 컴포넌트 (11개)
+```
 
 ## Architecture Principles
 
@@ -26,6 +37,7 @@ pnpm dev              # Vite 개발 서버 (localhost:5173)
   CLI와 Web은 saju-lib의 `calculate()` 함수를 호출하여 결과를 표시만 한다.
 - **No external API dependencies.** 절기 계산(VSOP87), 음양력 변환 모두 자체 구현.
 - **Pure functions preferred.** bazi.ts, astro.ts, lunar.ts는 순수 함수로 구성.
+- **Pure client-side SPA.** saju-web은 SSR/API Routes 없이 Vite로 정적 빌드.
 
 ## Coding Conventions
 
@@ -54,14 +66,21 @@ pnpm dev              # Vite 개발 서버 (localhost:5173)
 - `i18n.ts` — 한/영 라벨
 - `service.ts` — 통합 API (`calculate()`, `parseTime()`)
 
-### Web Components (saju-web)
+### Web App (saju-web)
+- `src/App.tsx` — 메인 앱 (레이아웃 + 상태 관리 + 폼/결과 렌더링)
 - `src/components/utils.ts` — 공통 헬퍼 (elementCss, stemSub, branchSub)
 - 각 컴포넌트는 `result: SajuResult`와 `i18n: I18n`을 props로 받음
-- `src/App.tsx` — 메인 앱 (layout + page 통합)
+- `vite.config.ts` — `base: '/saju/'` (GitHub Pages 배포 경로)
+
+## Deployment
+
+- GitHub Pages로 자동 배포 (`.github/workflows/deploy.yml`)
+- `pnpm -r build` → `packages/saju-web/dist/` 아티팩트를 Pages에 업로드
+- 배포 URL: `https://luuvish.github.io/saju/`
 
 ## Testing
 
-- Vitest 사용, 테스트 파일: `packages/saju-lib/__tests__/service.test.ts`
+- Vitest 사용, 테스트 파일: `packages/saju-lib/__tests__/*.test.ts`
 - 코드 변경 후 반드시 `pnpm test` 실행하여 회귀 확인
 - `pnpm build`로 TypeScript 컴파일 에러 없음 확인
 

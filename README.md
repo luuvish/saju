@@ -21,10 +21,10 @@ Saju palja (Four Pillars of Destiny) calculator using solar terms (Lichun based)
 | Monorepo | pnpm workspace |
 | Core library | TypeScript (saju-lib) |
 | CLI | Commander.js (saju-cli) |
-| Web | Next.js 15 App Router (saju-web) |
-| Date/Timezone | dayjs + dayjs/plugin/timezone |
+| Web | Vite + React (saju-web) |
 | Test | Vitest |
-| Build | tsup (lib, cli), next build (web) |
+| Build | tsup (lib, cli), vite build (web) |
+| Deploy | GitHub Pages |
 
 ## Project Structure
 
@@ -47,29 +47,29 @@ saju/
 │   │   │   ├── timezone.ts      # IANA/fixed offset timezone handling
 │   │   │   ├── i18n.ts          # Korean/English labels
 │   │   │   └── service.ts       # Unified calculate() function
-│   │   └── __tests__/
-│   │       └── service.test.ts  # 16 unit tests
+│   │   └── __tests__/           # 249 unit tests (8 files)
 │   ├── saju-cli/                # CLI tool
 │   │   └── src/
 │   │       └── main.ts          # Commander-based CLI
-│   └── saju-web/                # Next.js web app
-│       ├── app/
-│       │   ├── layout.tsx
-│       │   ├── page.tsx
-│       │   ├── globals.css
-│       │   └── api/calculate/
-│       │       └── route.ts     # POST API endpoint
-│       └── components/
-│           ├── SajuForm.tsx
-│           ├── ResultDashboard.tsx
-│           ├── PillarTable.tsx
-│           ├── ElementsChart.tsx
-│           ├── StrengthSection.tsx
-│           ├── RelationsSection.tsx
-│           ├── ShinsalSection.tsx
-│           ├── DaewonTimeline.tsx
-│           ├── YearlyLuck.tsx
-│           └── MonthlyLuck.tsx
+│   └── saju-web/                # Vite + React SPA
+│       ├── index.html           # Vite entry point
+│       ├── vite.config.ts       # Vite config (base: '/saju/')
+│       └── src/
+│           ├── main.tsx         # React mount
+│           ├── App.tsx          # Main app (layout + page logic)
+│           ├── globals.css      # Global styles
+│           └── components/
+│               ├── utils.ts
+│               ├── SajuForm.tsx
+│               ├── ResultDashboard.tsx
+│               ├── PillarTable.tsx
+│               ├── ElementsChart.tsx
+│               ├── StrengthSection.tsx
+│               ├── RelationsSection.tsx
+│               ├── ShinsalSection.tsx
+│               ├── DaewonTimeline.tsx
+│               ├── YearlyLuck.tsx
+│               └── MonthlyLuck.tsx
 ```
 
 ## Requirements
@@ -80,8 +80,7 @@ saju/
 
 ```bash
 pnpm install
-pnpm --filter saju-lib build
-pnpm --filter saju-cli build
+pnpm build
 ```
 
 ## Test
@@ -146,18 +145,16 @@ node packages/saju-cli/dist/main.js --date 2000-01-15 --time 17:15 --tz Asia/Seo
 ## Web Usage
 
 ```bash
-pnpm --filter saju-web dev
+pnpm dev
 ```
 
-Open `http://localhost:3000` in your browser. The form auto-submits on field changes.
+Open `http://localhost:5173/saju/` in your browser. The form auto-submits on field changes.
 
-### API
+## Deployment
 
-```bash
-curl -X POST http://localhost:3000/api/calculate \
-  -H 'Content-Type: application/json' \
-  -d '{"date":"2000-01-15","time":"17:15","gender":"Male","calendar":"Solar","tz":"Asia/Seoul"}'
-```
+Pushes to `main` automatically deploy to GitHub Pages via `.github/workflows/deploy.yml`.
+
+Live: https://luuvish.github.io/saju/
 
 ## Notes
 - Day boundary for the day pillar is 23:00.
