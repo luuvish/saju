@@ -69,7 +69,7 @@ export class I18n {
   strengthHeading(): string { return this.lang === 'Ko' ? '신강/신약(간단 판정)' : 'Strength (simple)'; }
   elementsHeading(): string { return this.lang === 'Ko' ? '오행 분포(천간+지지)' : 'Five Elements (stems + branches)'; }
   daewonHeading(): string { return this.lang === 'Ko' ? '대운' : 'Decennial Luck'; }
-  yearlyLuckHeading(): string { return this.lang === 'Ko' ? '연운 (입춘 기준)' : 'Yearly Luck (Lichun)'; }
+  yearlyLuckHeading(): string { return this.lang === 'Ko' ? '세운 (입춘 기준)' : 'Yearly Luck (Lichun)'; }
   monthlyLuckHeading(year: number): string { return this.lang === 'Ko' ? `월운 (${year}년)` : `Monthly Luck (${year})`; }
   termsHeading(): string { return this.lang === 'Ko' ? '절기' : 'Solar Terms'; }
   tzLabel(): string { return this.lang === 'Ko' ? '기준' : 'time zone'; }
@@ -157,7 +157,12 @@ export class I18n {
   }
 
   monthLabel(branch: number): string {
-    return this.lang === 'Ko' ? `${BRANCHES_KO[branch]}월` : `${BRANCHES_EN[branch]} Month`;
+    const month = ((branch - 2 + 12) % 12) + 1;
+    // Each month starts at its 절 (jie) solar term, indexed by branch
+    const termsKo = ['대설', '소한', '입춘', '경칩', '청명', '입하', '망종', '소서', '입추', '백로', '한로', '입동'];
+    const termsEn = ['Daxue', 'Xiaohan', 'Lichun', 'Jingzhe', 'Qingming', 'Lixia', 'Mangzhong', 'Xiaoshu', 'Liqiu', 'Bailu', 'Hanlu', 'Lidong'];
+    const term = this.lang === 'Ko' ? termsKo[branch] : termsEn[branch];
+    return this.lang === 'Ko' ? `${month}월 ${term}` : `M${month} ${term}`;
   }
 
   elementLabel(element: Element): string {

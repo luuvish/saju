@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import SajuForm from '@/components/SajuForm';
 import ResultDashboard from '@/components/ResultDashboard';
 import { calculate, type SajuRequest, type SajuResult, type Lang } from 'saju-lib';
@@ -10,8 +10,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lang, setLang] = useState<Lang>('Ko');
-  const initialLoad = useRef(true);
-
   const handleSubmit = useCallback(async (formData: Record<string, unknown>) => {
     setLoading(true);
     setError(null);
@@ -36,7 +34,7 @@ export default function Home() {
       const data = calculate(req);
       setResult(data);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Calculation failed';
+      const message = err instanceof Error ? err.message : '계산에 실패했습니다';
       setError(message);
       setResult(null);
     } finally {
@@ -44,27 +42,6 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    if (initialLoad.current) {
-      initialLoad.current = false;
-      handleSubmit({
-        date: '2000-01-15',
-        time: '12:00',
-        gender: 'Male',
-        calendar: 'Solar',
-        leapMonth: false,
-        tz: 'Asia/Seoul',
-        useLmt: true,
-        location: 'seoul',
-        longitude: null,
-        daewonCount: 10,
-        monthYear: null,
-        yearStart: null,
-        yearCount: 10,
-        lang: 'ko',
-      });
-    }
-  }, [handleSubmit]);
 
   return (
     <>
@@ -72,12 +49,12 @@ export default function Home() {
       {loading && (
         <div className="loading-indicator">
           <div className="spinner" />
-          <span>Calculating...</span>
+          <span>계산 중...</span>
         </div>
       )}
       {error && (
         <div className="error-message">
-          <h3>Error</h3>
+          <h3>오류</h3>
           <p>{error}</p>
         </div>
       )}

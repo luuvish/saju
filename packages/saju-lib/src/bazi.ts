@@ -16,18 +16,35 @@ import type {
 } from './types.js';
 
 const HIDDEN_STEMS: readonly (readonly number[])[] = [
-  [9],          // 자: 癸
+  [9, 8],       // 자: 癸 壬
   [5, 9, 7],    // 축: 己 癸 辛
   [0, 2, 4],    // 인: 甲 丙 戊
-  [1],          // 묘: 乙
+  [1, 0],       // 묘: 乙 甲
   [4, 1, 9],    // 진: 戊 乙 癸
   [2, 4, 6],    // 사: 丙 戊 庚
-  [3, 5],       // 오: 丁 己
+  [3, 5, 2],    // 오: 丁 己 丙
   [5, 3, 1],    // 미: 己 丁 乙
   [6, 8, 4],    // 신: 庚 壬 戊
-  [7],          // 유: 辛
+  [7, 6],       // 유: 辛 庚
   [4, 7, 3],    // 술: 戊 辛 丁
-  [8, 0],       // 해: 壬 甲
+  [8, 0, 4],    // 해: 壬 甲 戊
+];
+
+// 지장간 비율 (30일 기준, HIDDEN_STEMS 순서와 동일)
+// 四正(子卯酉): 정기20 여기10, 四庫(丑辰未戌): 정기18 여기9 중기3, 四生(寅巳申): 정기16 여기7 중기7
+const HIDDEN_STEM_RATIOS: readonly (readonly number[])[] = [
+  [20, 10],       // 자: 癸20 壬10
+  [18, 9, 3],     // 축: 己18 癸9 辛3
+  [16, 7, 7],     // 인: 甲16 丙7 戊7
+  [20, 10],       // 묘: 乙20 甲10
+  [18, 9, 3],     // 진: 戊18 乙9 癸3
+  [16, 7, 7],     // 사: 丙16 戊7 庚7
+  [11, 9, 10],    // 오: 丁11 己9 丙10
+  [18, 9, 3],     // 미: 己18 丁9 乙3
+  [16, 7, 7],     // 신: 庚16 壬7 戊7
+  [20, 10],       // 유: 辛20 庚10
+  [18, 9, 3],     // 술: 戊18 辛9 丁3
+  [16, 7, 7],     // 해: 壬16 甲7 戊7
 ];
 
 const CHANGSHENG_START: readonly number[] = [11, 6, 2, 9, 2, 9, 5, 0, 8, 3];
@@ -170,6 +187,10 @@ export function tenGod(dayStem: number, targetStem: number): TenGod {
 
 export function hiddenStems(branch: number): readonly number[] {
   return HIDDEN_STEMS[branch];
+}
+
+export function hiddenStemRatios(branch: number): readonly number[] {
+  return HIDDEN_STEM_RATIOS[branch];
 }
 
 export function mainHiddenStem(branch: number): number {
