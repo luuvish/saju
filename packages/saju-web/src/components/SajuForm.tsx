@@ -2,13 +2,18 @@
  * @fileoverview 사주 입력 폼 컴포넌트
  *
  * 생년월일·시간·성별·역법·시간대·지역 등 사주 계산에 필요한
- * 입력을 받는 폼. 필드 변경 시 자동으로 디바운스 후 계산을 트리거한다.
+ * 입력을 받는 폼. 입력 변경 시 자동으로 재계산한다.
  * localStorage에 최근 입력값을 저장하여 재방문 시 복원한다.
  */
 
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { location as loc } from 'saju-lib';
+import type { FieldErrors } from './formValidation';
+import {
+  runValidatedSubmission,
+  scheduleDebouncedSubmit,
+} from './sajuFormFlow';
 
 const STORAGE_KEY = 'saju-form-state';
 
@@ -59,10 +64,10 @@ export interface SajuFormData {
 
 interface Props {
   onSubmit: (data: SajuFormData) => void;
-  loading: boolean;
+  onInvalid: (message: string | null) => void;
 }
 
-export default function SajuForm({ onSubmit, loading }: Props) {
+export default function SajuForm({ onSubmit, onInvalid }: Props) {
   const saved = useRef(loadSavedState());
   const [name, setName] = useState(saved.current?.name ?? '');
   const [date, setDate] = useState(saved.current?.date ?? '2000-01-15');
@@ -73,7 +78,9 @@ export default function SajuForm({ onSubmit, loading }: Props) {
   const [tz, setTz] = useState(saved.current?.tz ?? 'Asia/Seoul');
   const [locationVal, setLocationVal] = useState(saved.current?.locationVal ?? 'seoul');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const locations = loc.locationList();
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const locations = useMemo(() => loc.locationList(), []);
 
   /** 현재 폼 상태를 API 요청 페이로드로 변환한다 */
   const buildPayload = useCallback(() => {
@@ -93,25 +100,51 @@ export default function SajuForm({ onSubmit, loading }: Props) {
     };
   }, [name, date, time, gender, calendar, leapMonth, tz, locationVal]);
 
+  const submitIfValid = useCallback(() => {
+    const payload = buildPayload();
+    const validation = runValidatedSubmission(payload, onInvalid, onSubmit);
+    setFieldErrors(validation.fieldErrors);
+    setValidationMessage(validation.summary);
+  }, [buildPayload, onInvalid, onSubmit]);
+
   // 필드 변경 시 자동 제출 + localStorage 저장
   const firstRender = useRef(true);
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
-      onSubmit(buildPayload());
+      submitIfValid();
       return;
     }
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ name, date, time, gender, calendar, leapMonth, tz, locationVal }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ name, date, time, gender, calendar, leapMonth, tz, locationVal }),
+      );
     } catch { /* quota exceeded or private browsing — ignore */ }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      onSubmit(buildPayload());
-    }, DEBOUNCE_MS);
-  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal, onSubmit, buildPayload]);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = undefined;
+    }
+    debounceRef.current = scheduleDebouncedSubmit(
+      debounceRef.current,
+      DEBOUNCE_MS,
+      submitIfValid,
+    );
+  }, [name, date, time, gender, calendar, leapMonth, tz, locationVal, submitIfValid]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(buildPayload()); }}>
+    <form onSubmit={(e) => e.preventDefault()}>
+      {validationMessage && (
+        <div className="form-validation-summary" role="alert">
+          {validationMessage}
+        </div>
+      )}
       <div className="form-grid form-primary">
         <div className="form-group">
           <label htmlFor="name">이름</label>
@@ -124,9 +157,9 @@ export default function SajuForm({ onSubmit, loading }: Props) {
             <option value="Female">여(女)</option>
           </select>
         </div>
-        <div className="form-group">
+        <div className={`form-group${fieldErrors.tz ? ' has-error' : ''}`}>
           <label htmlFor="tz">시간대</label>
-          <select id="tz" value={tz} onChange={(e) => setTz(e.target.value)}>
+          <select id="tz" value={tz} onChange={(e) => setTz(e.target.value)} aria-invalid={!!fieldErrors.tz} aria-describedby={fieldErrors.tz ? 'tz-error' : undefined}>
             <option value="Asia/Seoul">Asia/Seoul (+09:00)</option>
             <option value="Asia/Tokyo">Asia/Tokyo (+09:00)</option>
             <option value="Asia/Shanghai">Asia/Shanghai (+08:00)</option>
@@ -134,15 +167,17 @@ export default function SajuForm({ onSubmit, loading }: Props) {
             <option value="America/Los_Angeles">America/Los_Angeles (-08:00)</option>
             <option value="Europe/London">Europe/London (+00:00)</option>
           </select>
+          {fieldErrors.tz && <p id="tz-error" className="form-field-error">{fieldErrors.tz}</p>}
         </div>
-        <div className="form-group">
+        <div className={`form-group${fieldErrors.location ? ' has-error' : ''}`}>
           <label htmlFor="location">지역 (평태양시)</label>
-          <select id="location" value={locationVal} onChange={(e) => setLocationVal(e.target.value)}>
+          <select id="location" value={locationVal} onChange={(e) => setLocationVal(e.target.value)} aria-invalid={!!fieldErrors.location} aria-describedby={fieldErrors.location ? 'location-error' : undefined}>
             <option value="">없음</option>
             {locations.map((l) => (
               <option key={l.key} value={l.key}>{l.display}</option>
             ))}
           </select>
+          {fieldErrors.location && <p id="location-error" className="form-field-error">{fieldErrors.location}</p>}
         </div>
       </div>
       <hr className="form-divider" />
@@ -160,13 +195,17 @@ export default function SajuForm({ onSubmit, loading }: Props) {
             <input type="checkbox" id="leapMonth" checked={leapMonth} onChange={(e) => setLeapMonth(e.target.checked)} />
           </label>
         </div>
-        <div className="form-group">
-          <label htmlFor="date">날짜</label>
-          <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        <div className={`form-group${fieldErrors.date ? ' has-error' : ''}`}>
+          <label htmlFor="date">
+            날짜 <span className="label-hint">{calendar === 'Solar' ? '(양력 1900~2100)' : '(음력 1900~2099)'}</span>
+          </label>
+          <input type="date" id="date" value={date} onChange={(e) => setDate(e.target.value)} required aria-invalid={!!fieldErrors.date} aria-describedby={fieldErrors.date ? 'date-error' : undefined} />
+          {fieldErrors.date && <p id="date-error" className="form-field-error">{fieldErrors.date}</p>}
         </div>
-        <div className="form-group">
-          <label htmlFor="time">시간</label>
-          <input type="time" id="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+        <div className={`form-group${fieldErrors.time ? ' has-error' : ''}`}>
+          <label htmlFor="time">시간 <span className="label-hint">(00:00~23:59)</span></label>
+          <input type="time" id="time" value={time} onChange={(e) => setTime(e.target.value)} required aria-invalid={!!fieldErrors.time} aria-describedby={fieldErrors.time ? 'time-error' : undefined} />
+          {fieldErrors.time && <p id="time-error" className="form-field-error">{fieldErrors.time}</p>}
         </div>
       </div>
     </form>

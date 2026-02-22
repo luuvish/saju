@@ -120,6 +120,66 @@ export interface SajuResult {
   solarTerms: SolarTerm[];
 }
 
+/** 입력 검증 실패 사유 코드 */
+export type ValidationErrorCode =
+  | 'TIME_FORMAT'
+  | 'TIME_HOUR_RANGE'
+  | 'TIME_MINUTE_RANGE'
+  | 'TIME_SECOND_RANGE'
+  | 'DATE_FORMAT'
+  | 'DATE_MONTH_RANGE'
+  | 'DATE_DAY_RANGE'
+  | 'DATE_SOLAR_YEAR_RANGE'
+  | 'DATE_LUNAR_YEAR_RANGE'
+  | 'DATE_SOLAR_INVALID'
+  | 'DATE_LUNAR_MONTH_RANGE'
+  | 'DATE_LUNAR_DAY_RANGE'
+  | 'DATE_LUNAR_LEAP_MISMATCH'
+  | 'DATE_LUNAR_SOLAR_RANGE'
+  | 'DATE_LUNAR_CONVERSION_FAILED'
+  | 'LEAP_MONTH_WITH_SOLAR'
+  | 'TIMEZONE_INVALID'
+  | 'LMT_LONGITUDE_LOCATION_CONFLICT'
+  | 'LMT_LOCATION_UNKNOWN'
+  | 'LMT_LOCATION_REQUIRED'
+  | 'LMT_LONGITUDE_RANGE'
+  | 'MONTH_YEAR_RANGE'
+  | 'YEAR_START_RANGE'
+  | 'YEAR_LUCK_RANGE'
+  | 'DAEWON_COUNT_MIN'
+  | 'DAEWON_COUNT_MAX'
+  | 'YEAR_COUNT_MIN'
+  | 'YEAR_COUNT_MAX';
+
+/** 입력 검증 실패를 나타내는 도메인 에러 */
+export class SajuValidationError extends Error {
+  readonly code: ValidationErrorCode;
+
+  constructor(code: ValidationErrorCode, message: string) {
+    super(message);
+    this.name = 'SajuValidationError';
+    this.code = code;
+  }
+}
+
+/** unknown 에러가 SajuValidationError인지 판별한다. */
+export function isSajuValidationError(err: unknown): err is SajuValidationError {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: unknown }).code;
+  return err.name === 'SajuValidationError' && typeof code === 'string';
+}
+
+function raiseValidationError(code: ValidationErrorCode, message: string): never {
+  throw new SajuValidationError(code, message);
+}
+
+const DAEWON_COUNT_MAX = 120;
+const YEAR_COUNT_MAX = 120;
+const SOLAR_YEAR_MIN = 1900;
+const SOLAR_YEAR_MAX = 2100;
+const LUNAR_YEAR_MIN = 1900;
+const LUNAR_YEAR_MAX = 2099;
+
 /**
  * 시간 문자열을 파싱한다.
  * @param input 'HH:MM' 또는 'HH:MM:SS' 형식
@@ -127,26 +187,62 @@ export interface SajuResult {
  * @throws 형식이 잘못된 경우
  */
 function parseTime(input: string): { hour: number; minute: number; second: number } {
-  const parts = input.split(':');
-  if (parts.length < 2 || parts.length > 3) {
-    throw new Error('time format must be HH:MM or HH:MM:SS');
+  const match = input.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    raiseValidationError('TIME_FORMAT', 'time format must be HH:MM or HH:MM:SS');
   }
-  const hour = parseInt(parts[0], 10);
-  const minute = parseInt(parts[1], 10);
-  const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
-  if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
-    throw new Error('time format must be HH:MM or HH:MM:SS');
-  }
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const second = match[3] !== undefined ? Number(match[3]) : 0;
   if (hour < 0 || hour > 23) {
-    throw new Error('hour must be 0-23');
+    raiseValidationError('TIME_HOUR_RANGE', 'hour must be 0-23');
   }
   if (minute < 0 || minute > 59) {
-    throw new Error('minute must be 0-59');
+    raiseValidationError('TIME_MINUTE_RANGE', 'minute must be 0-59');
   }
   if (second < 0 || second > 59) {
-    throw new Error('second must be 0-59');
+    raiseValidationError('TIME_SECOND_RANGE', 'second must be 0-59');
   }
   return { hour, minute, second };
+}
+
+/** 양력 날짜가 실제 달력 날짜인지 검증한다. */
+function isValidSolarDate(year: number, month: number, day: number): boolean {
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (year >= 0 && year < 100) d.setUTCFullYear(year);
+  return d.getUTCFullYear() === year && d.getUTCMonth() + 1 === month && d.getUTCDate() === day;
+}
+
+/** lunar.ts에서 온 오류를 입력 검증 코드 에러로 변환한다. */
+function mapLunarError(err: unknown): never {
+  if (lunar.isLunarConversionError(err)) {
+    switch (err.code) {
+      case 'LUNAR_YEAR_RANGE':
+        raiseValidationError('DATE_LUNAR_YEAR_RANGE', err.message);
+      case 'LUNAR_MONTH_RANGE':
+        raiseValidationError('DATE_LUNAR_MONTH_RANGE', err.message);
+      case 'LUNAR_DAY_RANGE':
+        raiseValidationError('DATE_LUNAR_DAY_RANGE', err.message);
+      case 'LUNAR_LEAP_MISMATCH':
+        raiseValidationError('DATE_LUNAR_LEAP_MISMATCH', err.message);
+      case 'SOLAR_BEFORE_RANGE':
+      case 'SOLAR_AFTER_RANGE':
+        raiseValidationError('DATE_LUNAR_SOLAR_RANGE', err.message);
+      case 'LUNAR_RESOLUTION_FAILED':
+        raiseValidationError('DATE_LUNAR_CONVERSION_FAILED', err.message);
+    }
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  raiseValidationError('DATE_LUNAR_CONVERSION_FAILED', message);
+}
+
+function isSolarToLunarRangeError(err: unknown): boolean {
+  return lunar.isLunarConversionError(err)
+    && (
+      err.code === 'SOLAR_BEFORE_RANGE'
+      || err.code === 'SOLAR_AFTER_RANGE'
+      || err.code === 'LUNAR_YEAR_RANGE'
+    );
 }
 
 // ── 내부 헬퍼 ──
@@ -162,38 +258,55 @@ interface DateResolution {
 
 /** 1단계: 입력 날짜 파싱 및 음양력 변환 */
 function resolveDate(req: SajuRequest): DateResolution {
-  const dateParts = req.date.split('-').map(Number);
-  const [inputYear, inputMonth, inputDay] = dateParts;
-
-  if (isNaN(inputYear) || isNaN(inputMonth) || isNaN(inputDay)) {
-    throw new Error('date must be valid YYYY-MM-DD format');
+  const dateMatch = req.date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!dateMatch) {
+    raiseValidationError('DATE_FORMAT', 'date must be valid YYYY-MM-DD format');
   }
+  const inputYear = Number(dateMatch[1]);
+  const inputMonth = Number(dateMatch[2]);
+  const inputDay = Number(dateMatch[3]);
   if (inputMonth < 1 || inputMonth > 12) {
-    throw new Error('month must be 1-12');
+    raiseValidationError('DATE_MONTH_RANGE', 'month must be 1-12');
   }
   if (inputDay < 1 || inputDay > 31) {
-    throw new Error('day must be 1-31');
+    raiseValidationError('DATE_DAY_RANGE', 'day must be 1-31');
   }
 
-  if (req.calendar === 'Lunar' && (inputYear < 1900 || inputYear > 2099)) {
-    throw new Error('음력 변환은 1900-2099년 범위만 지원합니다');
+  if (req.calendar === 'Lunar' && (inputYear < LUNAR_YEAR_MIN || inputYear > LUNAR_YEAR_MAX)) {
+    raiseValidationError('DATE_LUNAR_YEAR_RANGE', `음력 변환은 ${LUNAR_YEAR_MIN}-${LUNAR_YEAR_MAX}년 범위만 지원합니다`);
   }
-  if (req.calendar === 'Solar' && (inputYear < 1900 || inputYear > 2100)) {
-    throw new Error('양력 절기 계산은 1900-2100년 범위만 지원합니다');
+  if (req.calendar === 'Solar' && (inputYear < SOLAR_YEAR_MIN || inputYear > SOLAR_YEAR_MAX)) {
+    raiseValidationError('DATE_SOLAR_YEAR_RANGE', `양력 절기 계산은 ${SOLAR_YEAR_MIN}-${SOLAR_YEAR_MAX}년 범위만 지원합니다`);
+  }
+  if (req.calendar === 'Solar' && !isValidSolarDate(inputYear, inputMonth, inputDay)) {
+    raiseValidationError('DATE_SOLAR_INVALID', 'solar date must be a valid calendar date');
   }
 
   if (req.calendar === 'Solar') {
     const sDate = new Date(Date.UTC(inputYear, inputMonth - 1, inputDay));
     if (inputYear >= 0 && inputYear < 100) sDate.setUTCFullYear(inputYear);
+    let convertedLunar: LunarDate | null = null;
+    try {
+      convertedLunar = lunar.solarToLunar(sDate);
+    } catch (err: unknown) {
+      // 절기 계산 가능한 연도여도 음력 데이터 테이블 범위를 넘는 날짜가 있다.
+      // 이 경우 계산은 진행하고 음력 표기만 생략한다.
+      if (!isSolarToLunarRangeError(err)) mapLunarError(err);
+    }
     return {
       solarYear: inputYear,
       solarMonth: inputMonth,
       solarDay: inputDay,
       convertedSolar: null,
-      convertedLunar: lunar.solarToLunar(sDate),
+      convertedLunar,
     };
   } else {
-    const sDate = lunar.lunarToSolar(inputYear, inputMonth, inputDay, req.leapMonth);
+    let sDate: Date;
+    try {
+      sDate = lunar.lunarToSolar(inputYear, inputMonth, inputDay, req.leapMonth);
+    } catch (err: unknown) {
+      mapLunarError(err);
+    }
     const solarYear = sDate.getUTCFullYear();
     const solarMonth = sDate.getUTCMonth() + 1;
     const solarDay = sDate.getUTCDate();
@@ -217,6 +330,13 @@ interface TimezoneResolution {
   tzSpec: tz.TimeZoneSpec
 }
 
+interface InputResolution {
+  dateRes: DateResolution
+  tzRes: TimezoneResolution
+  monthYear: number
+  yearStart: number
+}
+
 /** 2단계: 시간대 적용 및 LMT 보정 */
 function applyTimezone(
   solarYear: number,
@@ -228,7 +348,13 @@ function applyTimezone(
   const solarDateStr = `${String(solarYear).padStart(4, '0')}-${String(solarMonth).padStart(2, '0')}-${String(solarDay).padStart(2, '0')}`;
   const timeStr = `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}:${String(time.second).padStart(2, '0')}`;
 
-  const tzSpec = tz.parseTimezone(req.tz);
+  let tzSpec: tz.TimeZoneSpec;
+  try {
+    tzSpec = tz.parseTimezone(req.tz);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    raiseValidationError('TIMEZONE_INVALID', message);
+  }
   const localDt = tz.localize(tzSpec, solarDateStr, timeStr);
   const offsetSeconds = localDt.utcOffset() * 60;
 
@@ -237,7 +363,7 @@ function applyTimezone(
 
   if (req.useLmt) {
     if (req.longitude !== null && req.location !== null) {
-      throw new Error('use either --longitude or --location (not both)');
+      raiseValidationError('LMT_LONGITUDE_LOCATION_CONFLICT', 'use either --longitude or --location (not both)');
     }
     let longitude: number;
     let locationLabel: string | null = null;
@@ -247,16 +373,16 @@ function applyTimezone(
     } else if (req.location !== null) {
       const loc = location.resolveLocation(req.location);
       if (!loc) {
-        throw new Error(`unknown location '${req.location}'; try one of: ${location.locationHint()}`);
+        raiseValidationError('LMT_LOCATION_UNKNOWN', `unknown location '${req.location}'; try one of: ${location.locationHint()}`);
       }
       longitude = loc.longitude;
       locationLabel = loc.display;
     } else {
-      throw new Error('longitude or location is required for local mean time');
+      raiseValidationError('LMT_LOCATION_REQUIRED', 'longitude or location is required for local mean time');
     }
 
     if (longitude < -180 || longitude > 180) {
-      throw new Error('longitude must be between -180 and 180 degrees');
+      raiseValidationError('LMT_LONGITUDE_RANGE', 'longitude must be between -180 and 180 degrees');
     }
 
     const [stdMeridian, correctionSecs] = location.lmtCorrection(longitude, offsetSeconds);
@@ -272,6 +398,60 @@ function applyTimezone(
   }
 
   return { finalLocalDt, lmtInfo, tzSpec };
+}
+
+/** 계산 전 입력값을 파싱·검증하고 1~2단계 결과를 반환한다. */
+function resolveInput(req: SajuRequest): InputResolution {
+  const time = parseTime(req.time);
+
+  if (req.calendar === 'Solar' && req.leapMonth) {
+    raiseValidationError('LEAP_MONTH_WITH_SOLAR', 'leap-month is only valid with calendar=lunar');
+  }
+
+  const dateRes = resolveDate(req);
+  const tzRes = applyTimezone(dateRes.solarYear, dateRes.solarMonth, dateRes.solarDay, time, req);
+  if (
+    req.monthYear !== null
+    && (!Number.isInteger(req.monthYear) || req.monthYear < SOLAR_YEAR_MIN || req.monthYear > SOLAR_YEAR_MAX)
+  ) {
+    raiseValidationError(
+      'MONTH_YEAR_RANGE',
+      `month-year must be an integer between ${SOLAR_YEAR_MIN} and ${SOLAR_YEAR_MAX}`,
+    );
+  }
+  if (
+    req.yearStart !== null
+    && (!Number.isInteger(req.yearStart) || req.yearStart < SOLAR_YEAR_MIN || req.yearStart > SOLAR_YEAR_MAX)
+  ) {
+    raiseValidationError(
+      'YEAR_START_RANGE',
+      `year-start must be an integer between ${SOLAR_YEAR_MIN} and ${SOLAR_YEAR_MAX}`,
+    );
+  }
+  if (!Number.isInteger(req.daewonCount) || req.daewonCount < 1) {
+    raiseValidationError('DAEWON_COUNT_MIN', 'daewon-count must be an integer >= 1');
+  }
+  if (req.daewonCount > DAEWON_COUNT_MAX) {
+    raiseValidationError('DAEWON_COUNT_MAX', `daewon-count must be <= ${DAEWON_COUNT_MAX}`);
+  }
+  if (!Number.isInteger(req.yearCount) || req.yearCount < 1) {
+    raiseValidationError('YEAR_COUNT_MIN', 'year-count must be an integer >= 1');
+  }
+  if (req.yearCount > YEAR_COUNT_MAX) {
+    raiseValidationError('YEAR_COUNT_MAX', `year-count must be <= ${YEAR_COUNT_MAX}`);
+  }
+
+  const nowLocal = tz.toLocal(tzRes.tzSpec, dayjs.utc());
+  const monthYr = req.monthYear ?? nowLocal.year();
+  const yearStart = req.yearStart ?? monthYr - 3;
+  const yearEnd = yearStart + req.yearCount - 1;
+  if (yearStart < SOLAR_YEAR_MIN || yearEnd > SOLAR_YEAR_MAX) {
+    raiseValidationError(
+      'YEAR_LUCK_RANGE',
+      `yearly luck range must stay between ${SOLAR_YEAR_MIN} and ${SOLAR_YEAR_MAX}`,
+    );
+  }
+  return { dateRes, tzRes, monthYear: monthYr, yearStart };
 }
 
 /** 4기둥 산출 결과 */
@@ -354,7 +534,8 @@ function computeLuck(
   termsPrev: SolarTerm[],
   termsCurr: SolarTerm[],
   termsNext: SolarTerm[],
-  tzSpec: tz.TimeZoneSpec,
+  monthYear: number,
+  yearStart: number,
 ): LuckResolution {
   const direction = luck.daewonDirection(gender, yearStem);
   const startMonths = luck.daewonStartMonths(birthJd, termsPrev, termsCurr, termsNext, direction);
@@ -362,14 +543,8 @@ function computeLuck(
 
   const daewonPillars = luck.buildDaewonPillars(monthPillar, direction, req.daewonCount);
   const daewonItems = luck.buildDaewonItems(startMonths, daewonPillars);
-
-  const nowLocal = tz.toLocal(tzSpec, dayjs.utc());
-  const monthYr = req.monthYear ?? nowLocal.year();
-  const yearStart = req.yearStart ?? monthYr - 3;
-  if (req.yearCount === 0) throw new Error('year-count must be at least 1');
-
   const yearlyLuckResult = luck.yearlyLuck(yearStart, req.yearCount);
-  const monthlyLuckResult = luck.monthlyLuck(monthYr);
+  const monthlyLuckResult = luck.monthlyLuck(monthYear);
 
   return { direction, startMonths, daewonItems, yearlyLuckResult, monthlyLuckResult };
 }
@@ -409,25 +584,15 @@ function analyze(fourPillars: Pillar[], dayStem: number): AnalysisResult {
  * @returns 사주 계산 결과
  */
 export function calculate(req: SajuRequest): SajuResult {
-  const time = parseTime(req.time);
-
-  if (req.calendar === 'Solar' && req.leapMonth) {
-    throw new Error('leap-month is only valid with calendar=lunar');
-  }
-
-  // 1단계: 음양력 변환
-  const dateRes = resolveDate(req);
-
-  // 2단계: 시간대/LMT 보정
-  const tzRes = applyTimezone(dateRes.solarYear, dateRes.solarMonth, dateRes.solarDay, time, req);
+  const input = resolveInput(req);
 
   // 3~5단계: 4기둥 산출
-  const pillars = computePillars(tzRes.finalLocalDt);
+  const pillars = computePillars(input.tzRes.finalLocalDt);
 
   // 6단계: 운 계산
   const luckRes = computeLuck(
     req, req.gender, pillars.yearStem, pillars.monthPillar,
-    pillars.birthJd, pillars.termsPrev, pillars.termsCurr, pillars.termsNext, tzRes.tzSpec,
+    pillars.birthJd, pillars.termsPrev, pillars.termsCurr, pillars.termsNext, input.monthYear, input.yearStart,
   );
 
   // 7단계: 분석
@@ -439,10 +604,10 @@ export function calculate(req: SajuRequest): SajuResult {
     inputTime: req.time,
     calendarIsLunar: req.calendar === 'Lunar',
     leapMonth: req.leapMonth,
-    tzName: tz.tzName(tzRes.tzSpec),
-    convertedSolar: dateRes.convertedSolar,
-    convertedLunar: dateRes.convertedLunar,
-    lmtInfo: tzRes.lmtInfo,
+    tzName: tz.tzName(input.tzRes.tzSpec),
+    convertedSolar: input.dateRes.convertedSolar,
+    convertedLunar: input.dateRes.convertedLunar,
+    lmtInfo: input.tzRes.lmtInfo,
     gender: req.gender,
     yearPillar: pillars.yearPillar,
     monthPillar: pillars.monthPillar,
@@ -458,7 +623,15 @@ export function calculate(req: SajuRequest): SajuResult {
     daewonItems: luckRes.daewonItems,
     yearlyLuck: luckRes.yearlyLuckResult,
     monthlyLuck: luckRes.monthlyLuckResult,
-    tzSpec: tzRes.tzSpec,
+    tzSpec: input.tzRes.tzSpec,
     solarTerms: pillars.termsCurr,
   };
+}
+
+/**
+ * 사주 계산 요청의 입력값 유효성만 사전 검증한다.
+ * 성공 시 반환값은 없고, 오류 시 예외를 던진다.
+ */
+export function validateRequest(req: SajuRequest): void {
+  resolveInput(req);
 }

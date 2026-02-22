@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { calculate, type SajuRequest } from '../src/service.js';
+import {
+  calculate,
+  validateRequest,
+  SajuValidationError,
+  type SajuRequest,
+} from '../src/service.js';
 import * as bazi from '../src/bazi.js';
 import type { Gender } from '../src/types.js';
 
@@ -104,6 +109,222 @@ describe('service tests (ported from Rust)', () => {
       yearCount: 3,
     };
     expect(() => calculate(req)).toThrow('time format');
+  });
+
+  it('test_invalid_time_contains_non_digit_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:3a', 'Male');
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('TIME_FORMAT');
+      }
+    }
+    expect(() => calculate(req)).toThrow('time format must be HH:MM or HH:MM:SS');
+  });
+
+  it('test_date_requires_zero_padded_format', () => {
+    const req = makeRequest('2000-1-1', '12:00', 'Male');
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('DATE_FORMAT');
+      }
+    }
+    expect(() => calculate(req)).toThrow('date must be valid YYYY-MM-DD format');
+  });
+
+  it('test_invalid_solar_calendar_date', () => {
+    const req = makeRequest('2000-02-30', '12:00', 'Male');
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('DATE_SOLAR_INVALID');
+      }
+    }
+    expect(() => calculate(req)).toThrow('solar date must be a valid calendar date');
+  });
+
+  it('test_solar_2100_late_date_keeps_calculation_with_null_lunar_conversion', () => {
+    const req = makeRequest('2100-12-31', '12:00', 'Male');
+    expect(() => validateRequest(req)).not.toThrow();
+    const result = calculate(req);
+    expect(result.calendarIsLunar).toBe(false);
+    expect(result.convertedLunar).toBeNull();
+  });
+
+  it('test_year_count_negative_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.yearCount = -1;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('YEAR_COUNT_MIN');
+      }
+    }
+    expect(() => calculate(req)).toThrow('year-count must be an integer >= 1');
+  });
+
+  it('test_year_count_non_integer_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.yearCount = 1.2;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('YEAR_COUNT_MIN');
+      }
+    }
+    expect(() => calculate(req)).toThrow('year-count must be an integer >= 1');
+  });
+
+  it('test_year_count_too_large_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.yearCount = 121;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('YEAR_COUNT_MAX');
+      }
+    }
+    expect(() => calculate(req)).toThrow('year-count must be <= 120');
+  });
+
+  it('test_daewon_count_negative_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.daewonCount = -1;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('DAEWON_COUNT_MIN');
+      }
+    }
+    expect(() => calculate(req)).toThrow('daewon-count must be an integer >= 1');
+  });
+
+  it('test_daewon_count_non_integer_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.daewonCount = 2.5;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('DAEWON_COUNT_MIN');
+      }
+    }
+    expect(() => calculate(req)).toThrow('daewon-count must be an integer >= 1');
+  });
+
+  it('test_daewon_count_too_large_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.daewonCount = 121;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('DAEWON_COUNT_MAX');
+      }
+    }
+    expect(() => calculate(req)).toThrow('daewon-count must be <= 120');
+  });
+
+  it('test_month_year_out_of_range_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.monthYear = 1800;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('MONTH_YEAR_RANGE');
+      }
+    }
+    expect(() => calculate(req)).toThrow('month-year must be an integer between 1900 and 2100');
+  });
+
+  it('test_year_start_out_of_range_is_rejected', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.yearStart = 2200;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('YEAR_START_RANGE');
+      }
+    }
+    expect(() => calculate(req)).toThrow('year-start must be an integer between 1900 and 2100');
+  });
+
+  it('test_yearly_luck_range_overflow_is_rejected_with_explicit_year_start', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.yearStart = 2100;
+    req.yearCount = 2;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('YEAR_LUCK_RANGE');
+      }
+    }
+    expect(() => calculate(req)).toThrow('yearly luck range must stay between 1900 and 2100');
+  });
+
+  it('test_yearly_luck_range_overflow_is_rejected_with_default_year_start', () => {
+    const req = makeRequest('2000-01-15', '12:00', 'Male');
+    req.monthYear = 2100;
+    req.yearStart = null;
+    req.yearCount = 10;
+    expect(() => validateRequest(req)).toThrow(SajuValidationError);
+    try {
+      validateRequest(req);
+      throw new Error('expected validateRequest to throw');
+    } catch (err: unknown) {
+      expect(err).toBeInstanceOf(SajuValidationError);
+      if (err instanceof SajuValidationError) {
+        expect(err.code).toBe('YEAR_LUCK_RANGE');
+      }
+    }
+    expect(() => calculate(req)).toThrow('yearly luck range must stay between 1900 and 2100');
   });
 
   it('test_leap_month_with_solar_errors', () => {

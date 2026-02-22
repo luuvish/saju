@@ -3,6 +3,7 @@ import SajuForm from './components/SajuForm'
 import type { SajuFormData } from './components/SajuForm'
 import ResultDashboard from './components/ResultDashboard'
 import { calculate, type SajuResult, type SajuRequest, type Lang } from 'saju-lib'
+import { invalidInputEffects } from './appInvalidState'
 
 export default function App() {
   const [result, setResult] = useState<SajuResult | null>(null)
@@ -10,10 +11,15 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [lang, setLang] = useState<Lang>('Ko')
+  const handleInvalid = useCallback((message: string | null) => {
+    const effects = invalidInputEffects(message)
+    if (effects.stopLoading) setLoading(false)
+    if (effects.clearResult) setResult(null)
+    if (effects.clearError) setError(null)
+  }, [])
   // setState 함수들은 React가 보장하는 안정적 참조이므로 deps가 비어 있어도 안전하다
   const handleSubmit = useCallback((formData: SajuFormData) => {
     setLoading(true)
-    setError(null)
     const formLang = formData.lang === 'en' ? 'En' : 'Ko'
     setLang(formLang as Lang)
     setName(formData.name ?? '')
@@ -33,7 +39,9 @@ export default function App() {
         yearStart: formData.yearStart ?? null,
         yearCount: formData.yearCount ?? 3,
       }
-      setResult(calculate(req))
+      const calculated = calculate(req)
+      setResult(calculated)
+      setError(null)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '계산에 실패했습니다'
       setError(message)
@@ -49,7 +57,7 @@ export default function App() {
         <h1>사주팔자</h1>
         <p className="subtitle">四柱八字</p>
       </header>
-      <SajuForm onSubmit={handleSubmit} loading={loading} />
+      <SajuForm onSubmit={handleSubmit} onInvalid={handleInvalid} />
       {loading && (
         <div className="loading-indicator">
           <div className="spinner" />

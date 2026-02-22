@@ -31,6 +31,11 @@ import {
   type Direction,
   type Gender,
 } from 'saju-lib';
+import {
+  parseIntegerOption,
+  parseOptionalIntegerOption,
+  parseOptionalNumberOption,
+} from './cliParsing.js';
 
 const program = new Command();
 
@@ -104,12 +109,12 @@ function run(opts: CliOptions): void {
     gender,
     tz: opts.tz,
     useLmt,
-    longitude: opts.longitude != null ? parseFloat(opts.longitude) : null,
+    longitude: parseOptionalNumberOption(opts.longitude, '--longitude'),
     location: opts.location ?? null,
-    daewonCount: parseInt(opts.daewonCount, 10),
-    monthYear: opts.monthYear != null ? parseInt(opts.monthYear, 10) : null,
-    yearStart: opts.yearStart != null ? parseInt(opts.yearStart, 10) : null,
-    yearCount: parseInt(opts.yearCount, 10),
+    daewonCount: parseIntegerOption(opts.daewonCount, '--daewon-count'),
+    monthYear: parseOptionalIntegerOption(opts.monthYear, '--month-year'),
+    yearStart: parseOptionalIntegerOption(opts.yearStart, '--year-start'),
+    yearCount: parseIntegerOption(opts.yearCount, '--year-count'),
   };
 
   const result = calculate(req);

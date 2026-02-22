@@ -14,6 +14,38 @@ const LUNAR_MIN_YEAR = 1900;
 /** 지원 음력 최대 연도 */
 const LUNAR_MAX_YEAR = 2099;
 
+/** 음력 변환 실패 코드 */
+export type LunarErrorCode =
+  | 'LUNAR_YEAR_RANGE'
+  | 'LUNAR_MONTH_RANGE'
+  | 'LUNAR_DAY_RANGE'
+  | 'LUNAR_LEAP_MISMATCH'
+  | 'SOLAR_BEFORE_RANGE'
+  | 'SOLAR_AFTER_RANGE'
+  | 'LUNAR_RESOLUTION_FAILED';
+
+/** 음양력 변환 도메인 에러 */
+export class LunarConversionError extends Error {
+  readonly code: LunarErrorCode;
+
+  constructor(code: LunarErrorCode, message: string) {
+    super(message);
+    this.name = 'LunarConversionError';
+    this.code = code;
+  }
+}
+
+/** unknown 에러가 LunarConversionError인지 판별한다. */
+export function isLunarConversionError(err: unknown): err is LunarConversionError {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: unknown }).code;
+  return err.name === 'LunarConversionError' && typeof code === 'string';
+}
+
+function raiseLunarError(code: LunarErrorCode, message: string): never {
+  throw new LunarConversionError(code, message);
+}
+
 /**
  * 음력 데이터 테이블 (1900~2099년, 200개 항목).
  *
@@ -170,18 +202,18 @@ export function lunarToSolar(
   isLeap: boolean,
 ): Date {
   if (year < LUNAR_MIN_YEAR || year > LUNAR_MAX_YEAR) {
-    throw new Error(`lunar date range supported: ${LUNAR_MIN_YEAR}-${LUNAR_MAX_YEAR}`);
+    raiseLunarError('LUNAR_YEAR_RANGE', `lunar date range supported: ${LUNAR_MIN_YEAR}-${LUNAR_MAX_YEAR}`);
   }
   if (month === 0 || month > 12) {
-    throw new Error('lunar month must be 1-12');
+    raiseLunarError('LUNAR_MONTH_RANGE', 'lunar month must be 1-12');
   }
   const leapMonth = lunarLeapMonth(year);
   if (isLeap && leapMonth !== month) {
-    throw new Error('leap-month flag does not match the year\'s leap month');
+    raiseLunarError('LUNAR_LEAP_MISMATCH', 'leap-month flag does not match the year\'s leap month');
   }
   const maxDay = isLeap ? lunarLeapDays(year) : lunarMonthDays(year, month);
   if (day === 0 || day > maxDay) {
-    throw new Error(`lunar day must be 1-${maxDay}`);
+    raiseLunarError('LUNAR_DAY_RANGE', `lunar day must be 1-${maxDay}`);
   }
 
   // 1900-01-31부터의 누적 일수 계산 (프리픽스 합으로 O(1) 조회)
@@ -215,18 +247,18 @@ export function lunarToSolar(
 export function solarToLunar(date: Date): LunarDate {
   const base = dateFromYmd(LUNAR_MIN_YEAR, 1, 31);
   if (date < base) {
-    throw new Error('solar date before supported lunar range');
+    raiseLunarError('SOLAR_BEFORE_RANGE', 'solar date before supported lunar range');
   }
   const dateYear = date.getUTCFullYear();
   if (dateYear > LUNAR_MAX_YEAR) {
-    throw new Error(`lunar date range supported: ${LUNAR_MIN_YEAR}-${LUNAR_MAX_YEAR}`);
+    raiseLunarError('LUNAR_YEAR_RANGE', `lunar date range supported: ${LUNAR_MIN_YEAR}-${LUNAR_MAX_YEAR}`);
   }
 
   let offset = daysBetween(base, date);
   const endDate = dateFromYmd(LUNAR_MAX_YEAR + 1, 2, 19);
   const totalDays = daysBetween(base, endDate);
   if (offset >= totalDays) {
-    throw new Error('solar date after supported lunar range');
+    raiseLunarError('SOLAR_AFTER_RANGE', 'solar date after supported lunar range');
   }
 
   // 연도 결정: 누적 일수에서 각 연도의 총 일수를 차감
@@ -242,7 +274,7 @@ export function solarToLunar(date: Date): LunarDate {
     offset -= days;
   }
   if (!yearFound) {
-    throw new Error('solar date after supported lunar range');
+    raiseLunarError('SOLAR_AFTER_RANGE', 'solar date after supported lunar range');
   }
 
   // 월/윤달 결정: 남은 일수에서 각 월의 일수를 차감
@@ -272,8 +304,7 @@ export function solarToLunar(date: Date): LunarDate {
 
   const day = offset + 1;
   if (day < 1 || day > 30) {
-    throw new Error('failed to determine lunar day from solar date');
+    raiseLunarError('LUNAR_RESOLUTION_FAILED', 'failed to determine lunar day from solar date');
   }
   return { year, month, day, isLeap };
 }
-
