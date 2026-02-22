@@ -66,7 +66,7 @@ body {
     line-height: 1.6; min-height: 100vh;
 }
 
-.container { max-width: 900px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
+.container { max-width: 1080px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
 
 /* ===== 3.2 Header decoration ===== */
 header { text-align: center; margin-bottom: var(--space-8); }
@@ -273,7 +273,20 @@ form {
 }
 
 /* ===== 2. Pillar Table readability ===== */
-.pillar-table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0; }
+.pillar-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.pillar-table-wrap::-webkit-scrollbar { height: 4px; }
+.pillar-table-wrap::-webkit-scrollbar-track { background: transparent; }
+.pillar-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.pillar-table {
+    display: grid;
+    width: 100%;
+    min-width: calc(var(--pt-cols, 6) * 88px);
+    grid-template-columns: repeat(var(--pt-cols, 6), minmax(0, 1fr));
+    gap: 0;
+}
 .pt-row { display: contents; }
 .pt-label {
     font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;
@@ -349,6 +362,24 @@ form {
 .yongshin-method {
     font-size: var(--text-sm); color: var(--text-muted);
     margin-top: var(--space-3); text-align: center;
+}
+.yongshin-rationale {
+    margin-top: var(--space-3);
+    margin-bottom: var(--space-3);
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+}
+.yongshin-rationale-title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+.yongshin-rationale-line {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    line-height: 1.45;
 }
 @media (max-width: 640px) {
     .yongshin-grid { grid-template-columns: repeat(2, 1fr); }
@@ -442,11 +473,18 @@ form {
 /* ===== 6. Relations / Strength / Shinsal ===== */
 
 /* 6.1 Relations */
+.section-relations {
+    position: relative;
+    z-index: 11;
+    overflow: visible;
+}
 .relations-list { display: flex; flex-direction: column; gap: 0.4rem; }
 .relation-item {
-    display: flex; align-items: center; gap: 0.75rem;
+    position: relative;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0.3rem;
     padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
     font-size: 0.9rem;
+    overflow: visible;
     transition: box-shadow 0.2s, background 0.15s;
 }
 .relation-item:hover {
@@ -456,10 +494,110 @@ form {
 @media (prefers-color-scheme: dark) {
     .relation-item:hover { background: rgba(255,255,255,0.02); }
 }
-.relation-type { font-weight: 600; min-width: 7rem; }
-.relation-positions {
-    background: var(--bg); padding: 0.15rem 0.5rem;
-    border-radius: 4px; font-size: 0.8rem; font-weight: 600;
+.relation-trigger {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    padding: 0;
+}
+.relation-trigger:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.relation-title-row { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+.relation-type { font-weight: 700; }
+.relation-easy {
+    font-size: var(--text-xs); font-weight: 700;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    border: 1px solid var(--border);
+}
+.relation-easy-good {
+    background: var(--wood-bg); color: var(--wood-text); border-color: var(--wood-border);
+}
+.relation-easy-warn {
+    background: var(--fire-bg); color: var(--fire-text); border-color: var(--fire-border);
+}
+.relation-easy-neutral {
+    background: var(--water-bg); color: var(--water-text); border-color: var(--water-border);
+}
+.relation-meta {
+    font-size: var(--text-xs); color: var(--text-muted);
+    display: block;
+}
+.relation-help {
+    font-size: var(--text-sm); font-weight: 600;
+    display: block;
+}
+.relation-hover {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.35rem);
+    z-index: 1200;
+    width: max-content;
+    min-width: 240px;
+    max-width: min(92vw, 560px);
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 4px);
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    pointer-events: none;
+}
+.relation-item.is-open .relation-hover { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.relation-hover-title {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+.relation-hover-legend {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+.relation-mini-table {
+    display: grid;
+    grid-template-columns: repeat(var(--rel-cols, 4), minmax(0, 1fr));
+    gap: 0.3rem 0.28rem;
+    min-width: calc(var(--rel-cols, 4) * 82px);
+}
+.relation-mini-row { display: contents; }
+.relation-mini-cell { text-align: center; }
+.relation-mini-header .relation-mini-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+}
+.relation-mini-pos {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+.relation-mini-card {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.2rem;
+    border-radius: 8px;
+    min-width: 0;
+    white-space: nowrap;
+}
+.relation-mini-cell.is-stem-involved .relation-mini-card {
+    box-shadow: 0 0 0 2px var(--water-border);
+}
+.relation-mini-cell.is-branch-involved .relation-mini-card {
+    box-shadow: 0 0 0 2px var(--wood-border);
 }
 
 /* Relations — color-coded left border + tint */
@@ -501,17 +639,125 @@ form {
 .shinsal-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.4rem;
 }
+.section-shinsal {
+    position: relative;
+    z-index: 12;
+    overflow: visible;
+}
 .shinsal-item {
+    position: relative;
+    display: flex; flex-direction: column; gap: 0.3rem;
     padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    overflow: visible;
     transition: box-shadow 0.2s, border-color 0.2s;
 }
 .shinsal-item:hover {
     box-shadow: var(--shadow-sm);
     border-color: var(--primary);
 }
+.shinsal-trigger {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0;
+}
+.shinsal-trigger:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+.shinsal-head { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
 .shinsal-name { font-weight: 700; font-size: 0.9rem; }
-.shinsal-at { font-size: 0.8rem; color: var(--primary); margin-left: var(--space-2); font-weight: 500; }
-.shinsal-basis { font-size: var(--text-xs); color: var(--text-muted); margin-left: var(--space-2); }
+.shinsal-tone {
+    font-size: var(--text-xs); font-weight: 700;
+    padding: 0.1rem 0.45rem; border-radius: 999px;
+    border: 1px solid var(--border);
+}
+.shinsal-tone-good {
+    background: var(--wood-bg); color: var(--wood-text); border-color: var(--wood-border);
+}
+.shinsal-tone-warn {
+    background: var(--fire-bg); color: var(--fire-text); border-color: var(--fire-border);
+}
+.shinsal-tone-neutral {
+    background: var(--water-bg); color: var(--water-text); border-color: var(--water-border);
+}
+.shinsal-desc { font-size: var(--text-sm); display: block; }
+.shinsal-meta { font-size: var(--text-xs); color: var(--text-muted); display: block; }
+
+/* State-driven tooltip: related pillars */
+.shinsal-hover {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.35rem);
+    z-index: 1200;
+    width: max-content;
+    min-width: 240px;
+    max-width: min(92vw, 560px);
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 4px);
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+    pointer-events: none;
+}
+.shinsal-item.is-open .shinsal-hover { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.shinsal-hover-title {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: 0.3rem;
+}
+.shinsal-hover-legend {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+.shinsal-mini-table {
+    display: grid;
+    grid-template-columns: repeat(var(--sh-cols, 4), minmax(0, 1fr));
+    gap: 0.3rem 0.28rem;
+    min-width: calc(var(--sh-cols, 4) * 82px);
+}
+.shinsal-mini-row { display: contents; }
+.shinsal-mini-cell { text-align: center; }
+.shinsal-mini-header .shinsal-mini-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+}
+.shinsal-mini-pos {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+.shinsal-mini-card {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.2rem;
+    border-radius: 8px;
+    min-width: 0;
+    white-space: nowrap;
+}
+.shinsal-mini-cell.is-basis .shinsal-mini-card {
+    box-shadow: 0 0 0 2px var(--water-border);
+}
+.shinsal-mini-cell.is-found .shinsal-mini-card {
+    box-shadow: 0 0 0 2px var(--wood-border);
+}
+.shinsal-mini-cell.is-basis.is-found .shinsal-mini-card {
+    box-shadow: 0 0 0 2px var(--water-border), 0 0 0 4px var(--wood-border);
+}
 
 /* ===== Error ===== */
 .error-message {
@@ -524,7 +770,7 @@ form {
 /* ===== Responsive ===== */
 @media (max-width: 640px) {
     .container { padding: var(--space-4) var(--space-3); }
-    .pillar-table { grid-template-columns: repeat(6, 1fr); }
+    .pillar-table { min-width: calc(var(--pt-cols, 6) * 76px); }
     .pt-label { display: none; }
     .elements-section { grid-template-columns: 1fr; }
     .chart-container { max-width: 180px; margin: 0 auto; }
