@@ -8,6 +8,13 @@ Saju palja (Four Pillars of Destiny) calculator using solar terms (Lichun based)
 - Ten gods, hidden stems, 12 stages, 12 shinsal, five elements.
 - Stem interactions (hap, chung) and branch interactions (yukhap, chung, hyung, pa, hae, banghap, samhap).
 - 13 shinsal detection (dowhasa, cheonelgwiin, yeokmasal, etc.).
+- Web calculation guide with visual tabs:
+  - Yin-Yang/Five Elements (generate/control diagrams)
+  - Heavenly Stems / Earthly Branches (element + polarity mapping)
+  - Ten Gods (expanded relationship cards and flow matrix)
+  - Hidden Stems (single-line day-based bars per branch)
+  - Interactions (hap/chung/hyung/pa/hae with step-by-step rule cards)
+  - Shinsal (basis-driven detection flow and grouped cards)
 - Strength assessment (strong/weak/neutral).
 - Daewon (decennial), yearly, and monthly luck.
 - Local mean time correction by longitude or location.
@@ -61,6 +68,7 @@ saju/
 │           └── components/
 │               ├── utils.ts
 │               ├── SajuForm.tsx
+│               ├── CalculationGuide.tsx
 │               ├── ResultDashboard.tsx
 │               ├── PillarTable.tsx
 │               ├── ElementsChart.tsx
@@ -148,7 +156,10 @@ node packages/saju-cli/dist/main.js --date 2000-01-15 --time 17:15 --tz Asia/Seo
 pnpm dev
 ```
 
-Open `http://localhost:5173/saju/` in your browser. The form auto-submits on field changes.
+Open `http://localhost:5173/saju/` in your browser.
+
+- `사주 계산`: input form + result dashboard (auto-submits on field changes).
+- `계산 원리`: interactive guide page for formulas, mappings, and detection rules.
 
 ## Deployment
 
